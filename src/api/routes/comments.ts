@@ -24,6 +24,33 @@ router.get('/', async (req: Request, res: Response) => {
       }
     }
 
+    // Auto-enrich placeholder Facebook author names on the fly
+    for (const c of comments) {
+      if (c.platform === 'facebook' && (!c.author_name || c.author_name === 'Utente Facebook' || c.author_name === 'Utente Social' || c.author_name.startsWith('fb_') || c.author_name.startsWith('utente_'))) {
+        try {
+          const accounts = await dbRepository.getSocialAccountsByProfile(c.profile_id);
+          const fbAcc = accounts.find(a => a.id === c.social_account_id || a.platform === 'facebook');
+          const token = fbAcc?.access_token;
+          const commId = c.platform_comment_id;
+
+          if (token && commId) {
+            const detailRes = await fetch(`https://graph.facebook.com/v20.0/${commId}?fields=from{id,name}&access_token=${token}`);
+            if (detailRes.ok) {
+              const detailData = await detailRes.json() as any;
+              if (detailData.from?.name) {
+                const realName = detailData.from.name.trim();
+                c.author_name = realName;
+                c.author_username = realName;
+                await dbRepository.updateComment(c.id, { author_name: realName, author_username: realName });
+              }
+            }
+          }
+        } catch {
+          // ignore to keep response fast
+        }
+      }
+    }
+
     res.json({ success: true, comments });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
@@ -313,6 +340,99 @@ router.delete('/:id', async (req: Request, res: Response) => {
 
     await dbRepository.deleteComment(comment.id);
     res.json({ success: true, message: 'Commento eliminato definitivamente dall\'inbox' });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// GET /api/comments/:id/post-url - Resolves exact post permalink for Instagram, Facebook, TikTok
+router.get('/:id/post-url', async (req: Request, res: Response) => {
+  try {
+    const commentId = String(req.params.id);
+    const comment = await dbRepository.getCommentById(commentId);
+    if (!comment) {
+      return res.status(404).json({ success: false, error: 'Commento non trovato' });
+    }
+
+    // 1. If already stored, return directly
+    if (comment.post_url && comment.post_url.trim()) {
+      return res.json({ success: true, url: comment.post_url.trim() });
+    }
+
+    const platform = (comment.platform || '').toLowerCase();
+
+    // 2. Resolve for Instagram Media Permalink
+    if (platform === 'instagram') {
+      const accounts = await dbRepository.getSocialAccountsByProfile(comment.profile_id);
+      const acc = accounts.find(a => a.id === comment.social_account_id || a.platform === 'instagram');
+      const token = acc?.access_token;
+      const mediaId = comment.platform_post_id;
+
+      if (token && mediaId) {
+        try {
+          const igRes = await fetch(`https://graph.facebook.com/v20.0/${mediaId}?fields=permalink&access_token=${token}`);
+          if (igRes.ok) {
+            const igData = await igRes.json() as any;
+            if (igData.permalink) {
+              await dbRepository.updateComment(comment.id, { post_url: igData.permalink });
+              return res.json({ success: true, url: igData.permalink });
+            }
+          }
+        } catch (e) {
+          console.warn('[Instagram Permalink Fetch Error]', e);
+        }
+      }
+
+      // Fallback: if account handle is known
+      const handle = (acc?.account_handle || '').replace(/^@/, '');
+      if (handle) {
+        return res.json({ success: true, url: `https://www.instagram.com/${handle}/` });
+      }
+      return res.json({ success: true, url: 'https://www.instagram.com' });
+    }
+
+    // 3. Resolve for Facebook
+    if (platform === 'facebook') {
+      const accounts = await dbRepository.getSocialAccountsByProfile(comment.profile_id);
+      const acc = accounts.find(a => a.id === comment.social_account_id || a.platform === 'facebook');
+      const token = acc?.access_token;
+      const postId = comment.platform_post_id;
+
+      if (token && postId) {
+        try {
+          const fbRes = await fetch(`https://graph.facebook.com/v20.0/${postId}?fields=permalink_url&access_token=${token}`);
+          if (fbRes.ok) {
+            const fbData = await fbRes.json() as any;
+            if (fbData.permalink_url) {
+              await dbRepository.updateComment(comment.id, { post_url: fbData.permalink_url });
+              return res.json({ success: true, url: fbData.permalink_url });
+            }
+          }
+        } catch (e) {
+          console.warn('[Facebook Permalink Fetch Error]', e);
+        }
+      }
+
+      if (postId) {
+        return res.json({ success: true, url: `https://www.facebook.com/${postId}` });
+      }
+      return res.json({ success: true, url: 'https://www.facebook.com' });
+    }
+
+    // 4. Resolve for TikTok
+    if (platform === 'tiktok') {
+      const accounts = await dbRepository.getSocialAccountsByProfile(comment.profile_id);
+      const acc = accounts.find(a => a.id === comment.social_account_id || a.platform === 'tiktok');
+      const handle = (acc?.account_handle || '').replace(/^@/, '');
+      if (comment.platform_post_id && handle) {
+        const url = `https://www.tiktok.com/@${handle}/video/${comment.platform_post_id}`;
+        await dbRepository.updateComment(comment.id, { post_url: url });
+        return res.json({ success: true, url });
+      }
+      return res.json({ success: true, url: 'https://www.tiktok.com' });
+    }
+
+    res.json({ success: true, url: `https://www.google.com/search?q=${encodeURIComponent(comment.comment_text)}` });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }

@@ -80,8 +80,8 @@ export class MetaSyncService {
     const pageName = (acc.account_name || '').trim().toLowerCase();
     let newCount = 0;
 
-    // Fetch up to 10 latest posts with up to 25 latest comments each (with from{id,name})
-    const url = `https://graph.facebook.com/v20.0/${pageId}/feed?fields=id,message,created_time,comments.limit(25){id,message,from{id,name},created_time}&limit=10&access_token=${token}`;
+    // Fetch up to 10 latest posts with up to 25 latest comments each (with from{id,name} and permalink_url)
+    const url = `https://graph.facebook.com/v20.0/${pageId}/feed?fields=id,message,permalink_url,created_time,comments.limit(25){id,message,from{id,name},created_time,permalink_url}&limit=10&access_token=${token}`;
     const res = await fetch(url);
     const data = await res.json() as any;
 
@@ -93,14 +93,15 @@ export class MetaSyncService {
     for (const post of data.data) {
       const commentsList = post.comments?.data || [];
       const postSnippet = (post.message || 'Post Facebook').slice(0, 150);
+      const postUrl = post.permalink_url || `https://www.facebook.com/${post.id}`;
 
       for (const c of commentsList) {
         const commentId = String(c.id);
         const commentText = c.message;
         if (!commentText) continue;
 
-        const authorId = c.from?.id ? String(c.from.id) : '';
-        const authorName = (c.from?.name || '').trim();
+        let authorId = c.from?.id ? String(c.from.id) : '';
+        let authorName = (c.from?.name || '').trim();
 
         // 1. FILTER OUT OWN COMMENTS: Do not ingest comments posted by the page itself
         const isOwnComment = (authorId && (authorId === pageId || authorId === String(acc.external_account_id))) ||
@@ -116,9 +117,40 @@ export class MetaSyncService {
         const existing = await dbRepository.findCommentByPlatformCommentId(commentId);
         if (existing) continue;
 
+        // If authorName is missing, attempt direct query on comment node or user node with Page Access Token
+        if (!authorName && commentId) {
+          try {
+            const detailRes = await fetch(`https://graph.facebook.com/v20.0/${commentId}?fields=from{id,name}&access_token=${token}`);
+            if (detailRes.ok) {
+              const detailData = await detailRes.json() as any;
+              if (detailData.from?.name) {
+                authorName = detailData.from.name.trim();
+                authorId = detailData.from.id ? String(detailData.from.id) : authorId;
+              }
+            }
+          } catch (e) {
+            // ignore
+          }
+        }
+
+        if (!authorName && authorId) {
+          try {
+            const userRes = await fetch(`https://graph.facebook.com/v20.0/${authorId}?fields=name&access_token=${token}`);
+            if (userRes.ok) {
+              const userData = await userRes.json() as any;
+              if (userData.name) {
+                authorName = userData.name.trim();
+              }
+            }
+          } catch (e) {
+            // ignore
+          }
+        }
+
         // Display real human name instead of raw numerical fb_id
         const finalAuthorName = authorName || (authorId ? `Utente Facebook` : 'Utente');
         const finalAuthorUsername = authorName || (authorId ? `utente_${authorId.slice(-6)}` : 'utente_social');
+        const commentUrl = c.permalink_url || postUrl;
 
         // 3. Generate AI Reply
         const aiResult = await AIOrchestrator.generateReply({
@@ -143,6 +175,7 @@ export class MetaSyncService {
           author_name: finalAuthorName,
           comment_text: commentText,
           post_snippet: postSnippet,
+          post_url: commentUrl,
           proposed_reply: aiResult.proposedReply,
           final_reply: isAutoPilot ? aiResult.proposedReply : '',
           status: initialStatus,
@@ -178,8 +211,8 @@ export class MetaSyncService {
     const ownHandle = (acc.account_handle || acc.account_name || '').replace(/^@/, '').toLowerCase().trim();
     let newCount = 0;
 
-    // Fetch up to 10 latest media posts with up to 25 latest comments each
-    const url = `https://graph.facebook.com/v20.0/${igUserId}/media?fields=id,caption,timestamp,comments.limit(25){id,text,from{id,username},timestamp}&limit=10&access_token=${token}`;
+    // Fetch up to 10 latest media posts with permalink and up to 25 latest comments each
+    const url = `https://graph.facebook.com/v20.0/${igUserId}/media?fields=id,caption,permalink,timestamp,comments.limit(25){id,text,from{id,username},timestamp}&limit=10&access_token=${token}`;
     const res = await fetch(url);
     const data = await res.json() as any;
 
@@ -191,6 +224,7 @@ export class MetaSyncService {
     for (const media of data.data) {
       const commentsList = media.comments?.data || [];
       const postSnippet = (media.caption || 'Post Instagram').slice(0, 150);
+      const postUrl = media.permalink || (ownHandle ? `https://www.instagram.com/${ownHandle}/` : 'https://www.instagram.com');
 
       for (const c of commentsList) {
         const commentId = String(c.id);
@@ -240,6 +274,7 @@ export class MetaSyncService {
           author_name: authorName,
           comment_text: commentText,
           post_snippet: postSnippet,
+          post_url: postUrl,
           proposed_reply: aiResult.proposedReply,
           final_reply: isAutoPilot ? aiResult.proposedReply : '',
           status: initialStatus,

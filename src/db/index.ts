@@ -99,6 +99,7 @@ export interface CommentRecord {
   author_name: string;
   comment_text: string;
   post_snippet: string;
+  post_url?: string;
   received_at: string;
   proposed_reply: string;
   final_reply: string;
@@ -134,6 +135,13 @@ export async function initDatabase(): Promise<void> {
     await db.execute('CREATE TABLE IF NOT EXISTS deleted_comments (platform_comment_id TEXT PRIMARY KEY, deleted_at DATETIME DEFAULT CURRENT_TIMESTAMP)');
   } catch (e) {
     // Table already exists, ignore
+  }
+
+  // Migration: ensure post_url column exists in comments
+  try {
+    await db.execute('ALTER TABLE comments ADD COLUMN post_url TEXT DEFAULT ""');
+  } catch (e) {
+    // Column already exists, ignore
   }
 
   // Ensure default profile "Scarabocchi Saggi" exists
@@ -500,6 +508,7 @@ export const dbRepository = {
         author_name: comment.author_name || 'Utente Social',
         comment_text: comment.comment_text,
         post_snippet: comment.post_snippet || '',
+        post_url: comment.post_url || '',
         received_at: new Date().toISOString(),
         proposed_reply: comment.proposed_reply || '',
         final_reply: comment.final_reply || '',
@@ -514,9 +523,9 @@ export const dbRepository = {
       sql: `
         INSERT INTO comments (
           id, profile_id, social_account_id, platform, platform_post_id, platform_comment_id,
-          author_username, author_name, comment_text, post_snippet,
+          author_username, author_name, comment_text, post_snippet, post_url,
           proposed_reply, final_reply, status, telegram_message_id
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       args: [
         id,
@@ -529,6 +538,7 @@ export const dbRepository = {
         comment.author_name || 'Utente Social',
         comment.comment_text,
         comment.post_snippet || '',
+        comment.post_url || '',
         comment.proposed_reply || '',
         comment.final_reply || '',
         comment.status || 'pending',

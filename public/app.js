@@ -1361,9 +1361,30 @@ document.addEventListener('DOMContentLoaded', () => {
     return 'https://www.google.com';
   }
 
-  window.openPostOriginal = (id) => {
+  window.openPostOriginal = async (id) => {
     const comment = (activeProfileComments || []).find(c => c.id === id);
     if (!comment) return;
+
+    // 1. Se il link diretto al post è già presente, aprilo subito
+    if (comment.post_url && comment.post_url.trim()) {
+      window.open(comment.post_url.trim(), '_blank', 'noopener,noreferrer');
+      return;
+    }
+
+    // 2. Risolvi il permalink esatto del post (Instagram / Facebook / TikTok) via server
+    try {
+      const res = await apiFetch(`/api/comments/${id}/post-url`);
+      const data = await res.json();
+      if (data.success && data.url) {
+        comment.post_url = data.url;
+        window.open(data.url, '_blank', 'noopener,noreferrer');
+        return;
+      }
+    } catch (e) {
+      console.warn('[Post URL] Impossibile recuperare permalink via API:', e);
+    }
+
+    // 3. Fallback di sicurezza
     const url = getPostUrl(comment);
     window.open(url, '_blank', 'noopener,noreferrer');
   };

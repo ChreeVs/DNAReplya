@@ -76,6 +76,7 @@ CREATE TABLE IF NOT EXISTS comments (
   author_name TEXT DEFAULT '',
   comment_text TEXT NOT NULL,
   post_snippet TEXT DEFAULT '',
+  post_url TEXT DEFAULT '',
   received_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   proposed_reply TEXT DEFAULT '',
   final_reply TEXT DEFAULT '',
