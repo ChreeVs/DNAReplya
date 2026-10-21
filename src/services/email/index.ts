@@ -8,11 +8,12 @@ export class EmailNotificationService {
     if (this.transporter) return this.transporter;
 
     const host = process.env.SMTP_HOST;
-    const port = parseInt(process.env.SMTP_PORT || '587', 10);
+    const port = parseInt(process.env.SMTP_PORT || '465', 10);
     const user = process.env.SMTP_USER;
     const pass = process.env.SMTP_PASS;
 
     if (host && user && pass) {
+      console.log(`[Email] Configurazione transporter SMTP -> ${host}:${port} (utente: ${user})`);
       this.transporter = nodemailer.createTransport({
         host,
         port,
@@ -23,6 +24,8 @@ export class EmailNotificationService {
         },
       });
       return this.transporter;
+    } else {
+      console.warn(`[Email] SMTP non attivo: parametri mancanti (host: ${Boolean(host)}, user: ${Boolean(user)}, pass: ${Boolean(pass)})`);
     }
     return null;
   }
@@ -55,7 +58,7 @@ export class EmailNotificationService {
     const transporter = this.getTransporter();
     if (transporter) {
       try {
-        const fromAddress = process.env.SMTP_FROM || `DNAReplya Security <${process.env.SMTP_USER || adminEmail}>`;
+        const fromAddress = process.env.SMTP_FROM || `"DNAReplya Security" <${process.env.SMTP_USER || adminEmail}>`;
         await transporter.sendMail({
           from: fromAddress,
           to: adminEmail,

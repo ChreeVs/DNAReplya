@@ -66,12 +66,16 @@ router.post('/register', async (req: Request, res: Response) => {
     const host = req.get('host') || 'localhost:3000';
     const baseUrl = `${protocol}://${host}`;
 
-    EmailNotificationService.notifyNewRegistration({
-      name: newUser.name,
-      email: newUser.email,
-      approvalToken,
-      baseUrl,
-    }).catch(console.error);
+    try {
+      await EmailNotificationService.notifyNewRegistration({
+        name: newUser.name,
+        email: newUser.email,
+        approvalToken,
+        baseUrl,
+      });
+    } catch (notifyErr: any) {
+      console.error('[Registration Notification Error]', notifyErr);
+    }
 
     return res.json({
       success: true,
