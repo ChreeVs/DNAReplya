@@ -72,15 +72,16 @@ export class MetaSyncService {
   }
 
   /**
-   * Syncs Facebook Page feed and comments
+   * Syncs Facebook Page feed and comments (skipping page's own replies)
    */
   private static async syncFacebookPageComments(profile: any, acc: any): Promise<number> {
-    const pageId = acc.external_account_id;
+    const pageId = String(acc.external_account_id);
     const token = acc.access_token;
+    const pageName = (acc.account_name || '').trim().toLowerCase();
     let newCount = 0;
 
-    // Fetch up to 10 latest posts with up to 25 latest comments each
-    const url = `https://graph.facebook.com/v20.0/${pageId}/feed?fields=id,message,created_time,comments.limit(25){id,message,from,created_time}&limit=10&access_token=${token}`;
+    // Fetch up to 10 latest posts with up to 25 latest comments each (with from{id,name})
+    const url = `https://graph.facebook.com/v20.0/${pageId}/feed?fields=id,message,created_time,comments.limit(25){id,message,from{id,name},created_time}&limit=10&access_token=${token}`;
     const res = await fetch(url);
     const data = await res.json() as any;
 
@@ -94,29 +95,40 @@ export class MetaSyncService {
       const postSnippet = (post.message || 'Post Facebook').slice(0, 150);
 
       for (const c of commentsList) {
-        const commentId = c.id;
+        const commentId = String(c.id);
         const commentText = c.message;
         if (!commentText) continue;
 
-        // Check if comment already exists in database
+        const authorId = c.from?.id ? String(c.from.id) : '';
+        const authorName = (c.from?.name || '').trim();
+
+        // 1. FILTER OUT OWN COMMENTS: Do not ingest comments posted by the page itself
+        const isOwnComment = (authorId && (authorId === pageId || authorId === String(acc.external_account_id))) ||
+                             (authorName && pageName && authorName.toLowerCase() === pageName);
+        if (isOwnComment) {
+          continue; // Skip self comments!
+        }
+
+        // 2. Check if comment already exists in database
         const existing = await dbRepository.findCommentByPlatformCommentId(commentId);
         if (existing) continue;
 
-        const authorName = c.from?.name || 'Utente Facebook';
-        const authorUsername = c.from?.id ? `fb_${c.from.id}` : 'utente_facebook';
+        // Display real human name instead of raw numerical fb_id
+        const finalAuthorName = authorName || (authorId ? `Utente Facebook` : 'Utente');
+        const finalAuthorUsername = authorName || (authorId ? `utente_${authorId.slice(-6)}` : 'utente_social');
 
-        // 1. Generate AI Reply
+        // 3. Generate AI Reply
         const aiResult = await AIOrchestrator.generateReply({
           profileId: profile.id,
           platform: 'facebook',
-          authorUsername,
+          authorUsername: finalAuthorUsername,
           commentText,
         });
 
         const isAutoPilot = Boolean(profile.auto_pilot_enabled);
         const initialStatus = isAutoPilot ? 'auto_replied' : 'pending';
 
-        // 2. Insert into DB
+        // 4. Insert into DB
         const record = await dbRepository.insertComment({
           id: `fb_${commentId}`,
           profile_id: profile.id,
@@ -124,8 +136,8 @@ export class MetaSyncService {
           platform: 'facebook',
           platform_post_id: post.id,
           platform_comment_id: commentId,
-          author_username: authorUsername,
-          author_name: authorName,
+          author_username: finalAuthorUsername,
+          author_name: finalAuthorName,
           comment_text: commentText,
           post_snippet: postSnippet,
           proposed_reply: aiResult.proposedReply,
@@ -135,7 +147,7 @@ export class MetaSyncService {
 
         newCount++;
 
-        // 3. Handle Auto-Pilot or Telegram Approval
+        // 5. Handle Auto-Pilot or Telegram Approval
         if (isAutoPilot) {
           await MetaPublisherService.publishReply(record.id, aiResult.proposedReply);
           await dbRepository.saveApprovedReply({
@@ -155,15 +167,16 @@ export class MetaSyncService {
   }
 
   /**
-   * Syncs Instagram Business media and comments
+   * Syncs Instagram Business media and comments (skipping profile's own replies)
    */
   private static async syncInstagramComments(profile: any, acc: any): Promise<number> {
-    const igUserId = acc.external_account_id;
+    const igUserId = String(acc.external_account_id);
     const token = acc.access_token;
+    const ownHandle = (acc.account_handle || acc.account_name || '').replace(/^@/, '').toLowerCase().trim();
     let newCount = 0;
 
     // Fetch up to 10 latest media posts with up to 25 latest comments each
-    const url = `https://graph.facebook.com/v20.0/${igUserId}/media?fields=id,caption,timestamp,comments.limit(25){id,text,from,timestamp}&limit=10&access_token=${token}`;
+    const url = `https://graph.facebook.com/v20.0/${igUserId}/media?fields=id,caption,timestamp,comments.limit(25){id,text,from{id,username},timestamp}&limit=10&access_token=${token}`;
     const res = await fetch(url);
     const data = await res.json() as any;
 
@@ -177,18 +190,28 @@ export class MetaSyncService {
       const postSnippet = (media.caption || 'Post Instagram').slice(0, 150);
 
       for (const c of commentsList) {
-        const commentId = c.id;
+        const commentId = String(c.id);
         const commentText = c.text;
         if (!commentText) continue;
 
-        // Check if comment already exists
+        const authorId = c.from?.id ? String(c.from.id) : '';
+        const authorUsernameRaw = (c.from?.username || '').trim();
+
+        // 1. FILTER OUT OWN COMMENTS: Do not ingest comments posted by the Instagram account itself
+        const isOwnComment = (authorId && (authorId === igUserId || authorId === String(acc.external_account_id))) ||
+                             (authorUsernameRaw && ownHandle && authorUsernameRaw.toLowerCase() === ownHandle);
+        if (isOwnComment) {
+          continue; // Skip self comments!
+        }
+
+        // 2. Check if comment already exists
         const existing = await dbRepository.findCommentByPlatformCommentId(commentId);
         if (existing) continue;
 
-        const authorUsername = c.from?.username ? `@${c.from.username}` : '@utente_instagram';
-        const authorName = c.from?.username || 'Utente Instagram';
+        const authorUsername = authorUsernameRaw ? `@${authorUsernameRaw}` : '@utente_instagram';
+        const authorName = authorUsernameRaw || 'Utente Instagram';
 
-        // 1. Generate AI Reply
+        // 3. Generate AI Reply
         const aiResult = await AIOrchestrator.generateReply({
           profileId: profile.id,
           platform: 'instagram',
@@ -199,7 +222,7 @@ export class MetaSyncService {
         const isAutoPilot = Boolean(profile.auto_pilot_enabled);
         const initialStatus = isAutoPilot ? 'auto_replied' : 'pending';
 
-        // 2. Insert into DB
+        // 4. Insert into DB
         const record = await dbRepository.insertComment({
           id: `ig_${commentId}`,
           profile_id: profile.id,
@@ -218,7 +241,7 @@ export class MetaSyncService {
 
         newCount++;
 
-        // 3. Handle Auto-Pilot or Telegram Approval
+        // 5. Handle Auto-Pilot or Telegram Approval
         if (isAutoPilot) {
           await MetaPublisherService.publishReply(record.id, aiResult.proposedReply);
           await dbRepository.saveApprovedReply({

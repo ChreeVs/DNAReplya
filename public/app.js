@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let activeProfileMemory = [];
   let activeFilter = 'all';
   let activeChannelFilter = 'all';
+  let activeChannelAccountId = null;
   let activeModalCommentId = null;
   let currentOAuthSessionId = null;
 
@@ -648,9 +649,51 @@ document.addEventListener('DOMContentLoaded', () => {
       statConnectedChannels.textContent = activeProfileAccounts.length;
       channelsCountBadge.textContent = activeProfileAccounts.length;
       renderChannels(activeProfileAccounts);
+      renderChannelFilterChips();
     } catch (err) {
       console.error('Error loading channels:', err);
     }
+  }
+
+  // Dynamically renders filter chips ONLY for connected channels
+  function renderChannelFilterChips() {
+    const container = document.getElementById('channelFilterGroup');
+    if (!container) return;
+
+    if (!activeProfileAccounts || activeProfileAccounts.length === 0) {
+      container.innerHTML = '<span class="field-hint" style="margin:0;font-size:0.75rem;">Nessun canale collegato</span>';
+      return;
+    }
+
+    const platformIcons = {
+      instagram: '📸 Instagram',
+      facebook: '📘 Facebook',
+      threads: '🧵 Threads',
+      linkedin: '💼 LinkedIn',
+      tiktok: '🎵 TikTok',
+      x: '🐦 X',
+    };
+
+    let html = `<button class="chan-filter-chip ${activeChannelFilter === 'all' ? 'active' : ''}" data-chan="all">🌐 Tutti i Canali (${activeProfileAccounts.length})</button>`;
+
+    activeProfileAccounts.forEach(acc => {
+      const icon = platformIcons[acc.platform.toLowerCase()] || `🌐 ${acc.platform}`;
+      const handle = acc.account_handle || acc.account_name;
+      const isActive = activeChannelAccountId === acc.id;
+      html += `<button class="chan-filter-chip ${isActive ? 'active' : ''}" data-chan="${acc.platform.toLowerCase()}" data-account-id="${acc.id}">${icon}: ${escapeHtml(handle)}</button>`;
+    });
+
+    container.innerHTML = html;
+
+    container.querySelectorAll('.chan-filter-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        container.querySelectorAll('.chan-filter-chip').forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+        activeChannelFilter = chip.dataset.chan;
+        activeChannelAccountId = chip.dataset.accountId || null;
+        renderFeed(filterComments(activeProfileComments));
+      });
+    });
   }
 
   function renderChannels(accounts) {
@@ -904,7 +947,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function filterComments(comments) {
     return (comments || []).filter(c => {
-      // 1. Status Filter
+      // 1. EXCLUDE SELF-COMMENTS: Filter out comments posted by the connected client account itself
+      const isSelfComment = (activeProfileAccounts || []).some(acc => {
+        const accHandle = (acc.account_handle || '').replace(/^@/, '').toLowerCase().trim();
+        const accName = (acc.account_name || '').toLowerCase().trim();
+        const extId = (acc.external_account_id || '').trim();
+
+        const cUser = (c.author_username || '').replace(/^(@|fb_)/, '').toLowerCase().trim();
+        const cName = (c.author_name || '').toLowerCase().trim();
+
+        if (extId && (cUser === extId || c.platform_comment_id?.startsWith(extId))) return true;
+        if (accHandle && (cUser === accHandle || cName === accHandle)) return true;
+        if (accName && (cName === accName || cUser === accName)) return true;
+        return false;
+      });
+      if (isSelfComment) return false;
+
+      // 2. Status Filter
       let statusMatch = true;
       if (activeFilter === 'pending') {
         statusMatch = c.status === 'pending';
@@ -912,10 +971,14 @@ document.addEventListener('DOMContentLoaded', () => {
         statusMatch = (c.status === 'approved' || c.status === 'modified' || c.status === 'auto_replied');
       }
 
-      // 2. Channel / Platform Filter
+      // 3. Connected Channel Filter
       let channelMatch = true;
       if (activeChannelFilter !== 'all') {
-        channelMatch = (c.platform && c.platform.toLowerCase() === activeChannelFilter.toLowerCase());
+        if (activeChannelAccountId) {
+          channelMatch = c.social_account_id === activeChannelAccountId || (c.platform && c.platform.toLowerCase() === activeChannelFilter.toLowerCase());
+        } else {
+          channelMatch = (c.platform && c.platform.toLowerCase() === activeChannelFilter.toLowerCase());
+        }
       }
 
       return statusMatch && channelMatch;
@@ -923,11 +986,37 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function updateCommentsMetrics() {
-    const pending = activeProfileComments.filter(c => c.status === 'pending').length;
-    const approved = activeProfileComments.filter(c => c.status === 'approved' || c.status === 'modified' || c.status === 'auto_replied').length;
-    statPendingComments.textContent = pending;
-    statApprovedComments.textContent = approved;
-    inboxCountBadge.textContent = pending;
+    const filteredPending = (activeProfileComments || []).filter(c => {
+      const isSelf = (activeProfileAccounts || []).some(acc => {
+        const handle = (acc.account_handle || '').replace(/^@/, '').toLowerCase().trim();
+        const name = (acc.account_name || '').toLowerCase().trim();
+        const extId = (acc.external_account_id || '').trim();
+        const cUser = (c.author_username || '').replace(/^(@|fb_)/, '').toLowerCase().trim();
+        const cName = (c.author_name || '').toLowerCase().trim();
+        return (extId && (cUser === extId || c.platform_comment_id?.startsWith(extId))) ||
+               (handle && (cUser === handle || cName === handle)) ||
+               (name && (cName === name || cUser === name));
+      });
+      return !isSelf && c.status === 'pending';
+    }).length;
+
+    const filteredApproved = (activeProfileComments || []).filter(c => {
+      const isSelf = (activeProfileAccounts || []).some(acc => {
+        const handle = (acc.account_handle || '').replace(/^@/, '').toLowerCase().trim();
+        const name = (acc.account_name || '').toLowerCase().trim();
+        const extId = (acc.external_account_id || '').trim();
+        const cUser = (c.author_username || '').replace(/^(@|fb_)/, '').toLowerCase().trim();
+        const cName = (c.author_name || '').toLowerCase().trim();
+        return (extId && (cUser === extId || c.platform_comment_id?.startsWith(extId))) ||
+               (handle && (cUser === handle || cName === handle)) ||
+               (name && (cName === name || cUser === name));
+      });
+      return !isSelf && (c.status === 'approved' || c.status === 'modified' || c.status === 'auto_replied');
+    }).length;
+
+    statPendingComments.textContent = filteredPending;
+    statApprovedComments.textContent = filteredApproved;
+    inboxCountBadge.textContent = filteredPending;
   }
 
   function renderFeed(comments) {
@@ -935,7 +1024,7 @@ document.addEventListener('DOMContentLoaded', () => {
       feedList.innerHTML = `
         <div class="empty-state">
           <span class="empty-icon">📭</span>
-          <p>Nessun commento trovato per questo filtro.<br>Usa il pulsante "Registra Commento" in alto a destra per registrare un messaggio in arrivo.</p>
+          <p>Nessun commento trovato per questo filtro.<br>I commenti reali appariranno qui automaticamente ad ogni sincronizzazione.</p>
         </div>
       `;
       return;
@@ -962,22 +1051,43 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const displayReply = c.final_reply || c.proposed_reply;
 
+      // Extract real human author name instead of raw numerical fb_id
+      let authorDisplayName = c.author_name;
+      if (!authorDisplayName || authorDisplayName === 'Utente Social' || authorDisplayName.startsWith('fb_') || authorDisplayName.startsWith('utente_')) {
+        if (c.author_username && !c.author_username.startsWith('fb_') && !c.author_username.startsWith('utente_')) {
+          authorDisplayName = c.author_username.replace(/^@/, '');
+        } else {
+          authorDisplayName = c.platform === 'facebook' ? 'Utente Facebook' : 'Utente Instagram';
+        }
+      }
+
+      const initial = (authorDisplayName.charAt(0) || '👤').toUpperCase();
+      const postSnippetText = c.post_snippet ? `su "${escapeHtml(c.post_snippet)}"` : '';
+
       return `
         <div class="feed-card" id="card-${c.id}">
-          <div class="feed-card-header">
-            <span class="card-platform-badge">${icon}</span>
-            <span class="status-badge ${c.status}">${statusLabels[c.status] || c.status}</span>
-          </div>
+          <div>
+            <div class="feed-card-header">
+              <span class="card-platform-badge">${icon}</span>
+              <span class="status-badge ${c.status}">${statusLabels[c.status] || c.status}</span>
+            </div>
 
-          <div class="feed-author">@${escapeHtml(c.author_username)} ${c.post_snippet ? `· <span style="font-weight:400;color:var(--text-dim);font-size:0.8rem">su "${escapeHtml(c.post_snippet)}"</span>` : ''}</div>
+            <div class="feed-author-row">
+              <div class="author-avatar">${escapeHtml(initial)}</div>
+              <div class="author-info">
+                <span class="author-fullname">${escapeHtml(authorDisplayName)}</span>
+                ${postSnippetText ? `<span class="author-context">${postSnippetText}</span>` : ''}
+              </div>
+            </div>
 
-          <div class="feed-comment-bubble">
-            "${escapeHtml(c.comment_text)}"
-          </div>
+            <div class="feed-comment-bubble">
+              "${escapeHtml(c.comment_text)}"
+            </div>
 
-          <div class="feed-proposed-box">
-            <span class="proposed-label">${c.status === 'pending' ? '🤖 Proposta Risposta AI:' : '📤 Risposta Finale Pubblicata:'}</span>
-            <p class="proposed-text">${escapeHtml(displayReply || 'Nessuna risposta disponibile')}</p>
+            <div class="feed-proposed-box">
+              <span class="proposed-label">${c.status === 'pending' ? '🤖 Proposta Risposta AI:' : '📤 Risposta Finale Pubblicata:'}</span>
+              <p class="proposed-text">${escapeHtml(displayReply || 'Nessuna risposta disponibile')}</p>
+            </div>
           </div>
 
           ${c.status === 'pending' ? `

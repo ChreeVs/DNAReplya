@@ -55,7 +55,18 @@ router.post('/meta', (req: Request, res: Response) => {
 
               if (verb === 'add' || itemType === 'comment') {
                 const commentText = val.message || val.text;
-                const authorUsername = val.from?.name || val.from?.id || 'utente_meta';
+                const authorId = val.from?.id ? String(val.from.id) : '';
+                const authorName = (val.from?.name || '').trim();
+
+                // Skip comments made by the account itself
+                if (authorId && (authorId === String(entryId) || authorId === String(matchedAccount?.external_account_id))) {
+                  continue;
+                }
+                if (authorName && matchedAccount?.account_name && authorName.toLowerCase() === matchedAccount.account_name.toLowerCase()) {
+                  continue;
+                }
+
+                const authorUsername = authorName || (authorId ? `utente_${authorId.slice(-6)}` : 'utente_meta');
                 const commentId = val.comment_id || val.id || `meta_${Date.now()}`;
                 const postId = val.post_id || val.media?.id || '';
 
