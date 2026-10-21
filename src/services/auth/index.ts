@@ -2,7 +2,7 @@ import crypto from 'crypto';
 import { UserRecord } from '../../db/index.js';
 
 const AUTH_SECRET = process.env.AUTH_SECRET || 'dnareplya_secure_session_secret_2026_xyz';
-const SUPER_ADMIN_EMAIL = 'christian.valese@dnacreativeagecy.it';
+const SUPER_ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'christian.valese@dnacreativeagency.it';
 
 export class AuthService {
   static getSuperAdminEmail(): string {
@@ -10,7 +10,10 @@ export class AuthService {
   }
 
   static isSuperAdmin(email: string): boolean {
-    return email.toLowerCase().trim() === SUPER_ADMIN_EMAIL.toLowerCase();
+    const clean = email.toLowerCase().trim();
+    return clean === SUPER_ADMIN_EMAIL.toLowerCase() ||
+           clean === 'christian.valese@dnacreativeagency.it' ||
+           clean === 'christian.valese@dnacreativeagecy.it';
   }
 
   static hashPassword(password: string): { hash: string; salt: string } {

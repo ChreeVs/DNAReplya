@@ -18,6 +18,9 @@ export class EmailNotificationService {
         port,
         secure: port === 465,
         auth: { user, pass },
+        tls: {
+          rejectUnauthorized: false,
+        },
       });
       return this.transporter;
     }
@@ -33,7 +36,7 @@ export class EmailNotificationService {
     approvalToken: string;
     baseUrl: string;
   }): Promise<void> {
-    const adminEmail = 'christian.valese@dnacreativeagecy.it';
+    const adminEmail = process.env.ADMIN_EMAIL || 'christian.valese@dnacreativeagency.it';
     const approveUrl = `${data.baseUrl}/api/auth/approve?token=${data.approvalToken}`;
     const rejectUrl = `${data.baseUrl}/api/auth/reject?token=${data.approvalToken}`;
 
@@ -52,8 +55,9 @@ export class EmailNotificationService {
     const transporter = this.getTransporter();
     if (transporter) {
       try {
+        const fromAddress = process.env.SMTP_FROM || `DNAReplya Security <${process.env.SMTP_USER || adminEmail}>`;
         await transporter.sendMail({
-          from: process.env.SMTP_FROM || '"DNAReplya Security" <noreply@dnacreativeagecy.it>',
+          from: fromAddress,
           to: adminEmail,
           subject: `🔔 Nuova Richiesta Accesso DNAReplya: ${data.name} (${data.email})`,
           html: `
