@@ -10,9 +10,9 @@ function maskKey(key?: string): string {
 }
 
 // GET global settings (OpenAI, Gemini, Claude, Telegram)
-router.get('/', (req: Request, res: Response) => {
+router.get('/', async (req: Request, res: Response) => {
   try {
-    const raw = dbRepository.getGlobalSettings();
+    const raw = await dbRepository.getGlobalSettings();
     const safeSettings = {
       default_ai_provider: raw.default_ai_provider || 'openai',
       api_key_openai_masked: maskKey(raw.api_key_openai),
@@ -31,10 +31,10 @@ router.get('/', (req: Request, res: Response) => {
 });
 
 // POST update global BYOK settings
-router.post('/', (req: Request, res: Response) => {
+router.post('/', async (req: Request, res: Response) => {
   try {
     const body = req.body;
-    const current = dbRepository.getGlobalSettings();
+    const current = await dbRepository.getGlobalSettings();
 
     const updates: any = {
       default_ai_provider: body.default_ai_provider ?? current.default_ai_provider,
@@ -53,7 +53,7 @@ router.post('/', (req: Request, res: Response) => {
       updates.global_telegram_bot_token = body.global_telegram_bot_token;
     }
 
-    const updated = dbRepository.updateGlobalSettings(updates);
+    const updated = await dbRepository.updateGlobalSettings(updates);
 
     if (updates.global_telegram_bot_token) {
       TelegramBotService.stopPolling();
@@ -69,7 +69,7 @@ router.post('/', (req: Request, res: Response) => {
 // POST test Telegram connection
 router.post('/test-telegram', async (req: Request, res: Response) => {
   try {
-    const globalSettings = dbRepository.getGlobalSettings();
+    const globalSettings = await dbRepository.getGlobalSettings();
     const token = req.body.token || globalSettings.global_telegram_bot_token || process.env.TELEGRAM_BOT_TOKEN;
     const chatId = req.body.chatId || process.env.TELEGRAM_ADMIN_CHAT_ID;
 

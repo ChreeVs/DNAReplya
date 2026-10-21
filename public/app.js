@@ -162,15 +162,46 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // Helper: Hex to RGBA
+  function hexToRgba(hex, alpha = 1) {
+    let cleanHex = hex.replace('#', '');
+    if (cleanHex.length === 3) {
+      cleanHex = cleanHex.split('').map(c => c + c).join('');
+    }
+    const r = parseInt(cleanHex.substring(0, 2), 16) || 163;
+    const g = parseInt(cleanHex.substring(2, 4), 16) || 230;
+    const b = parseInt(cleanHex.substring(4, 6), 16) || 53;
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }
+
+  // Dynamically apply profile accent color and logo to the entire UI
+  function applyProfileTheme(profile) {
+    if (!profile) return;
+    const color = profile.color || '#a3e635';
+    document.documentElement.style.setProperty('--lime', color);
+    document.documentElement.style.setProperty('--lime-bright', color);
+    document.documentElement.style.setProperty('--lime-glow', hexToRgba(color, 0.3));
+    document.documentElement.style.setProperty('--lime-subtle', hexToRgba(color, 0.12));
+    document.documentElement.style.setProperty('--border-active', hexToRgba(color, 0.45));
+
+    // Logo / Avatar
+    if (profile.logo_url && profile.logo_url.trim()) {
+      bannerProfileAvatar.innerHTML = `<img src="${profile.logo_url}" class="profile-logo-img" alt="${escapeHtml(profile.name)}" onerror="this.parentElement.textContent='${profile.name.substring(0, 2).toUpperCase()}'">`;
+    } else {
+      const initials = profile.name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase() || 'SS';
+      bannerProfileAvatar.textContent = initials;
+    }
+    bannerProfileAvatar.style.borderColor = color;
+    headerProfileDot.style.background = color;
+    headerProfileDot.style.boxShadow = `0 0 8px ${color}`;
+  }
+
   function updateHeaderAndBanner() {
     if (!activeProfile) return;
 
-    headerProfileName.textContent = activeProfile.name;
-    headerProfileDot.style.background = activeProfile.color || 'var(--lime)';
+    applyProfileTheme(activeProfile);
 
-    // Initials avatar
-    const initials = activeProfile.name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase() || 'SS';
-    bannerProfileAvatar.textContent = initials;
+    headerProfileName.textContent = activeProfile.name;
     bannerProfileName.textContent = activeProfile.name;
     bannerProfileDesc.textContent = activeProfile.description || 'Gestione canali social e risposte unificate';
 
@@ -224,6 +255,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const name = document.getElementById('newProfileName').value.trim();
     const description = document.getElementById('newProfileDesc').value.trim();
     const tone_of_voice = document.getElementById('newProfileTone').value;
+    const logo_url = document.getElementById('newProfileLogo').value.trim();
+    const color = document.getElementById('newProfileColor').value;
 
     if (!name) return;
 
@@ -231,7 +264,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const res = await fetch('/api/profiles', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, description, tone_of_voice }),
+        body: JSON.stringify({ name, description, tone_of_voice, logo_url, color }),
       });
       const data = await res.json();
       if (data.success) {
@@ -577,8 +610,38 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // --- 6. Tab 3: Guardrails del Profilo ---
+  const profLogoUrl = document.getElementById('profLogoUrl');
+  const profColorPicker = document.getElementById('profColorPicker');
+  const profColorHex = document.getElementById('profColorHex');
+  const profileColorChips = document.querySelectorAll('.color-chip-btn');
+
+  profileColorChips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      profileColorChips.forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      const col = chip.dataset.color;
+      profColorPicker.value = col;
+      profColorHex.textContent = col;
+      applyProfileTheme({ ...activeProfile, color: col });
+    });
+  });
+
+  profColorPicker.addEventListener('input', (e) => {
+    const col = e.target.value;
+    profColorHex.textContent = col;
+    applyProfileTheme({ ...activeProfile, color: col });
+  });
+
   function populateProfileGuardrails() {
     if (!activeProfile) return;
+    profLogoUrl.value = activeProfile.logo_url || '';
+    profColorPicker.value = activeProfile.color || '#a3e635';
+    profColorHex.textContent = activeProfile.color || '#a3e635';
+
+    profileColorChips.forEach(chip => {
+      chip.classList.toggle('active', chip.dataset.color.toLowerCase() === (activeProfile.color || '#a3e635').toLowerCase());
+    });
+
     profToneOfVoice.value = activeProfile.tone_of_voice || 'friendly';
     profMaxReplyLength.value = activeProfile.max_reply_length || 280;
     charLengthDisplay.textContent = activeProfile.max_reply_length || 280;
@@ -599,6 +662,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!activeProfile) return;
 
     const payload = {
+      logo_url: profLogoUrl.value.trim(),
+      color: profColorPicker.value,
       tone_of_voice: profToneOfVoice.value,
       max_reply_length: parseInt(profMaxReplyLength.value, 10),
       custom_tone_instructions: profCustomTone.value,
@@ -617,7 +682,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
       const data = await res.json();
       if (data.success) {
-        showToast(`🛡️ Regole aggiornate per "${activeProfile.name}"!`, 'success');
+        showToast(`🛡️ Regole e stile aggiornati per "${activeProfile.name}"!`, 'success');
         activeProfile = data.profile;
         updateHeaderAndBanner();
       }

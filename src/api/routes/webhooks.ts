@@ -37,15 +37,15 @@ router.post('/meta', (req: Request, res: Response) => {
 
           // Try to locate which client profile owns this external account
           const platform = body.object === 'instagram' ? 'instagram' : 'facebook';
-          const matchedAccount = dbRepository.findAccountByPlatformAndExternalId(platform, String(entryId));
+          const matchedAccount = await dbRepository.findAccountByPlatformAndExternalId(platform, String(entryId));
           
           let profileId = matchedAccount ? matchedAccount.profile_id : '';
           if (!profileId) {
-            const allProfiles = dbRepository.getAllProfiles();
+            const allProfiles = await dbRepository.getAllProfiles();
             profileId = allProfiles[0]?.id || 'prof_default';
           }
 
-          const profile = dbRepository.getProfileById(profileId);
+          const profile = await dbRepository.getProfileById(profileId);
 
           for (const change of changes) {
             const val = change.value;
@@ -72,7 +72,7 @@ router.post('/meta', (req: Request, res: Response) => {
                   const isAutoPilot = Boolean(profile?.auto_pilot_enabled);
                   const initialStatus = isAutoPilot ? 'auto_replied' : 'pending';
 
-                  const record = dbRepository.insertComment({
+                  const record = await dbRepository.insertComment({
                     id: commentId,
                     profile_id: profileId,
                     social_account_id: matchedAccount?.id || null,
@@ -91,7 +91,7 @@ router.post('/meta', (req: Request, res: Response) => {
                     await TelegramBotService.sendCommentNotification(record);
                   } else {
                     // Save to memory
-                    dbRepository.saveApprovedReply({
+                    await dbRepository.saveApprovedReply({
                       profile_id: profileId,
                       comment_id: commentId,
                       platform,
@@ -115,7 +115,7 @@ router.post('/meta', (req: Request, res: Response) => {
 router.post('/telegram', async (req: Request, res: Response) => {
   res.status(200).send('OK');
 
-  const { token } = TelegramBotService.getTelegramCredentials();
+  const { token } = await TelegramBotService.getTelegramCredentials();
   if (token && req.body) {
     setImmediate(async () => {
       try {

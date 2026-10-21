@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS profiles (
   slug TEXT UNIQUE NOT NULL,
   description TEXT DEFAULT '',
   color TEXT DEFAULT '#a3e635',
+  logo_url TEXT DEFAULT '',
   ai_provider TEXT DEFAULT 'openai',
   ai_model TEXT DEFAULT 'gpt-4o-mini',
   tone_of_voice TEXT DEFAULT 'friendly',

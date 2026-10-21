@@ -177,6 +177,38 @@
         </div>
 
         <form id="profileGuardrailsForm" class="panel-body">
+          <!-- Brand Identity: Logo & Accent Color -->
+          <div class="brand-identity-box mb-6">
+            <h4>🎨 Identità Visiva del Brand & Colore Accent</h4>
+            <p class="field-hint">Imposta il logo e il colore primario del cliente: cambierà l'intero tema dello strumento quando questo profilo è attivo.</p>
+            
+            <div class="form-row mt-3">
+              <div class="form-group flex-1">
+                <label for="profLogoUrl">URL Logo del Brand (opzionale)</label>
+                <input type="text" id="profLogoUrl" placeholder="https://tuosito.it/logo.png">
+              </div>
+              <div class="form-group flex-1">
+                <label>Colore Accent del Brand</label>
+                <div class="color-picker-row">
+                  <div class="color-palette-chips" id="profileColorChips">
+                    <button type="button" class="color-chip-btn" data-color="#a3e635" style="background:#a3e635" title="Lime"></button>
+                    <button type="button" class="color-chip-btn" data-color="#06b6d4" style="background:#06b6d4" title="Cyan"></button>
+                    <button type="button" class="color-chip-btn" data-color="#10b981" style="background:#10b981" title="Emerald"></button>
+                    <button type="button" class="color-chip-btn" data-color="#a855f7" style="background:#a855f7" title="Purple"></button>
+                    <button type="button" class="color-chip-btn" data-color="#f97316" style="background:#f97316" title="Orange"></button>
+                    <button type="button" class="color-chip-btn" data-color="#f43f5e" style="background:#f43f5e" title="Rose"></button>
+                    <button type="button" class="color-chip-btn" data-color="#3b82f6" style="background:#3b82f6" title="Blue"></button>
+                    <button type="button" class="color-chip-btn" data-color="#f59e0b" style="background:#f59e0b" title="Amber"></button>
+                  </div>
+                  <div class="color-input-wrapper">
+                    <input type="color" id="profColorPicker" value="#a3e635" class="native-color-picker">
+                    <span id="profColorHex" class="color-hex-label">#a3e635</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div class="form-row">
             <div class="form-group flex-1">
               <label for="profToneOfVoice">Tono di Voce del Brand</label>
@@ -385,6 +417,16 @@
         <div class="form-group">
           <label for="newProfileDesc">Descrizione / Settore</label>
           <input type="text" id="newProfileDesc" placeholder="es. E-commerce abbigliamento sostenibile">
+        </div>
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label for="newProfileLogo">URL Logo (opzionale)</label>
+            <input type="text" id="newProfileLogo" placeholder="https://.../logo.png">
+          </div>
+          <div class="form-group flex-1">
+            <label for="newProfileColor">Colore Accent</label>
+            <input type="color" id="newProfileColor" value="#a3e635" class="native-color-picker" style="height:42px;padding:2px 4px;">
+          </div>
         </div>
         <div class="form-group">
           <label for="newProfileTone">Tono di Voce Iniziale</label>

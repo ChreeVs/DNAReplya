@@ -6,14 +6,14 @@ export class AIOrchestrator {
    * Generates a context-aware, guardrail-compliant reply using the configured LLM and profile memory.
    */
   static async generateReply(req: GenerateReplyRequest): Promise<GenerateReplyResponse> {
-    const profile = dbRepository.getProfileById(req.profileId);
-    const globalSettings = dbRepository.getGlobalSettings();
+    const profile = await dbRepository.getProfileById(req.profileId);
+    const globalSettings = await dbRepository.getGlobalSettings();
 
     const provider = (profile?.ai_provider || globalSettings.default_ai_provider || 'openai') as AIProvider;
     const model = profile?.ai_model || this.getDefaultModel(provider);
 
     // 1. Retrieve dynamic few-shot examples strictly isolated for this client/profile
-    const pastReplies = dbRepository.getApprovedRepliesByProfile(req.profileId, 5);
+    const pastReplies = await dbRepository.getApprovedRepliesByProfile(req.profileId, 5);
 
     // 2. Build system prompt tailored to this profile's brand persona and boundaries
     const systemPrompt = this.buildSystemPrompt(profile, req.platform, pastReplies);

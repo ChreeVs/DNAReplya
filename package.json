@@ -21,6 +21,7 @@
   "author": "ChreeVs",
   "license": "MIT",
   "dependencies": {
+    "@libsql/client": "^0.18.0",
     "better-sqlite3": "^13.0.3",
     "cors": "^2.8.6",
     "dotenv": "^18.0.8",

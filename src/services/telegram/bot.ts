@@ -10,13 +10,13 @@ export class TelegramBotService {
   /**
    * Resolves bot token and target chat ID for a given profile or fallback to global settings
    */
-  static getTelegramCredentials(profileId?: string): { token: string; chatId: string } {
-    const globalSettings = dbRepository.getGlobalSettings();
+  static async getTelegramCredentials(profileId?: string): Promise<{ token: string; chatId: string }> {
+    const globalSettings = await dbRepository.getGlobalSettings();
     let token = globalSettings.global_telegram_bot_token || process.env.TELEGRAM_BOT_TOKEN || '';
     let chatId = process.env.TELEGRAM_ADMIN_CHAT_ID || '';
 
     if (profileId) {
-      const profile = dbRepository.getProfileById(profileId);
+      const profile = await dbRepository.getProfileById(profileId);
       if (profile?.telegram_bot_token) token = profile.telegram_bot_token;
       if (profile?.telegram_chat_id) chatId = profile.telegram_chat_id;
     }
@@ -28,14 +28,14 @@ export class TelegramBotService {
    * Sends a structured comment notification to Telegram with inline approval buttons
    */
   static async sendCommentNotification(comment: CommentRecord): Promise<number | null> {
-    const { token, chatId } = this.getTelegramCredentials(comment.profile_id);
+    const { token, chatId } = await this.getTelegramCredentials(comment.profile_id);
 
     if (!token || !chatId) {
       console.log(`[TelegramBotService] Token o Chat ID non configurati per il profilo ${comment.profile_id}.`);
       return null;
     }
 
-    const profile = dbRepository.getProfileById(comment.profile_id);
+    const profile = await dbRepository.getProfileById(comment.profile_id);
     const profileName = profile ? profile.name : 'Profilo';
 
     const platformIcons: Record<string, string> = {
@@ -90,7 +90,7 @@ ${comment.post_snippet ? `📌 <b>Post:</b> <i>"${this.escapeHtml(comment.post_s
       const data = await res.json() as any;
       if (data.ok && data.result?.message_id) {
         const msgId = data.result.message_id;
-        dbRepository.updateComment(comment.id, { telegram_message_id: msgId });
+        await dbRepository.updateComment(comment.id, { telegram_message_id: msgId });
         return msgId;
       } else {
         console.error('[TelegramBotService] Error response from Telegram:', data);
@@ -102,9 +102,9 @@ ${comment.post_snippet ? `📌 <b>Post:</b> <i>"${this.escapeHtml(comment.post_s
     }
   }
 
-  static startPolling(): void {
+  static async startPolling(): Promise<void> {
     if (this.isPolling) return;
-    const { token } = this.getTelegramCredentials();
+    const { token } = await this.getTelegramCredentials();
 
     if (!token) {
       console.log('[TelegramBotService] Polling Telegram non avviato (manca Bot Token).');
@@ -126,7 +126,7 @@ ${comment.post_snippet ? `📌 <b>Post:</b> <i>"${this.escapeHtml(comment.post_s
 
   private static async pollUpdates(): Promise<void> {
     if (!this.isPolling) return;
-    const { token } = this.getTelegramCredentials();
+    const { token } = await this.getTelegramCredentials();
 
     if (!token) {
       this.isPolling = false;
@@ -145,7 +145,7 @@ ${comment.post_snippet ? `📌 <b>Post:</b> <i>"${this.escapeHtml(comment.post_s
         }
       }
     } catch (err: any) {
-      // Ignore network hiccup
+      // Ignore network glitch
     }
 
     if (this.isPolling) {
@@ -162,7 +162,7 @@ ${comment.post_snippet ? `📌 <b>Post:</b> <i>"${this.escapeHtml(comment.post_s
       const messageId = cb.message?.message_id;
 
       const [action, commentId] = data.split(':');
-      const comment = dbRepository.getCommentById(commentId);
+      const comment = await dbRepository.getCommentById(commentId);
 
       if (!comment) {
         await this.answerCallback(token, cb.id, 'Commento non trovato');
@@ -170,15 +170,13 @@ ${comment.post_snippet ? `📌 <b>Post:</b> <i>"${this.escapeHtml(comment.post_s
       }
 
       if (action === 'appr') {
-        // APPROVE & PUBLISH
-        dbRepository.updateComment(comment.id, {
+        await dbRepository.updateComment(comment.id, {
           status: 'approved',
           final_reply: comment.proposed_reply,
           replied_at: new Date().toISOString(),
         });
 
-        // Save to Learning Memory isolated for this client/profile!
-        dbRepository.saveApprovedReply({
+        await dbRepository.saveApprovedReply({
           profile_id: comment.profile_id,
           comment_id: comment.id,
           platform: comment.platform,
@@ -197,7 +195,6 @@ ${comment.post_snippet ? `📌 <b>Post:</b> <i>"${this.escapeHtml(comment.post_s
           `<i>(Memorizzato nel profilo per l'apprendimento futuro)</i>`
         );
       } else if (action === 'regn') {
-        // REGENERATE
         await this.answerCallback(token, cb.id, '🔄 Rigenerazione in corso...');
         const newReply = await AIOrchestrator.generateReply({
           profileId: comment.profile_id,
@@ -207,7 +204,7 @@ ${comment.post_snippet ? `📌 <b>Post:</b> <i>"${this.escapeHtml(comment.post_s
           postSnippet: comment.post_snippet,
         });
 
-        dbRepository.updateComment(comment.id, {
+        await dbRepository.updateComment(comment.id, {
           proposed_reply: newReply.proposedReply,
         });
 
@@ -231,7 +228,7 @@ ${comment.post_snippet ? `📌 <b>Post:</b> <i>"${this.escapeHtml(comment.post_s
           `✏️ <b>Modifica Risposta</b> per @${comment.author_username}:\nScrivi e invia la risposta desiderata:`
         );
       } else if (action === 'rjct') {
-        dbRepository.updateComment(comment.id, { status: 'rejected' });
+        await dbRepository.updateComment(comment.id, { status: 'rejected' });
         await this.answerCallback(token, cb.id, '❌ Scartato');
         await this.editMessageText(
           token,
@@ -261,17 +258,16 @@ ${comment.post_snippet ? `📌 <b>Post:</b> <i>"${this.escapeHtml(comment.post_s
       if (this.pendingEdits.has(chatId)) {
         const commentId = this.pendingEdits.get(chatId)!;
         this.pendingEdits.delete(chatId);
-        const comment = dbRepository.getCommentById(commentId);
+        const comment = await dbRepository.getCommentById(commentId);
 
         if (comment) {
-          dbRepository.updateComment(comment.id, {
+          await dbRepository.updateComment(comment.id, {
             status: 'modified',
             final_reply: text,
             replied_at: new Date().toISOString(),
           });
 
-          // Save to profile's learning memory!
-          dbRepository.saveApprovedReply({
+          await dbRepository.saveApprovedReply({
             profile_id: comment.profile_id,
             comment_id: comment.id,
             platform: comment.platform,
