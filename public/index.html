@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DNAReplya 🧬 | Social AI Reply & Approval Hub</title>
+  <meta name="description" content="AI-Powered Social Media Reply & Approval Assistant with Telegram Integration and Dynamic Few-Shot Learning.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <!-- Header Bar -->
+  <header class="app-header">
+    <div class="header-left">
+      <div class="brand-logo">
+        <span class="logo-icon">🧬</span>
+        <div class="logo-text">
+          <h1>DNAReplya</h1>
+          <span class="logo-sub">AI Social Assistant & Telegram Hub</span>
+        </div>
+      </div>
+      <div class="system-status-badge" id="systemStatusBadge">
+        <span class="status-dot"></span>
+        <span class="status-label">Sistema Pronto</span>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <nav class="header-nav">
+      <button class="nav-tab active" data-tab="tab-inbox" id="tabBtnInbox">
+        <span class="tab-icon">📥</span> Feed & Simulatore
+      </button>
+      <button class="nav-tab" data-tab="tab-settings" id="tabBtnSettings">
+        <span class="tab-icon">🔑</span> BYOK & Connessioni
+      </button>
+      <button class="nav-tab" data-tab="tab-guardrails" id="tabBtnGuardrails">
+        <span class="tab-icon">🛡️</span> Regole & Limiti
+      </button>
+      <button class="nav-tab" data-tab="tab-memory" id="tabBtnMemory">
+        <span class="tab-icon">🧠</span> Memoria AI (<span id="memoryCountBadge">0</span>)
+      </button>
+    </nav>
+  </header>
+
+  <!-- Main Container -->
+  <main class="main-content">
+    <!-- Stat Counter Bar -->
+    <section class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-icon blue">💬</div>
+        <div class="metric-info">
+          <span class="metric-title">Commenti Gestiti</span>
+          <span class="metric-val" id="metricTotalComments">0</span>
+        </div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-icon green">✅</div>
+        <div class="metric-info">
+          <span class="metric-title">Approvati & Inviati</span>
+          <span class="metric-val" id="metricApproved">0</span>
+        </div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-icon purple">🧠</div>
+        <div class="metric-info">
+          <span class="metric-title">Esempi in Memoria</span>
+          <span class="metric-val" id="metricMemory">0</span>
+        </div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-icon amber">⚡</div>
+        <div class="metric-info">
+          <span class="metric-title">Modalità Operativa</span>
+          <span class="metric-val status-text" id="metricMode">Human-in-the-Loop</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 1: FEED & SIMULATOR -->
+    <section id="tab-inbox" class="tab-pane active">
+      <div class="split-layout">
+        <!-- Left: Workbench Simulator -->
+        <div class="panel simulator-panel">
+          <div class="panel-header">
+            <div>
+              <h2>🧪 Simulatore di Ricezione Social</h2>
+              <p class="panel-desc">Testa il flusso in tempo reale: genera la risposta con l'AI e invia la notifica con pulsanti a Telegram.</p>
+            </div>
+          </div>
+
+          <form id="simulatorForm" class="panel-body">
+            <div class="form-group">
+              <label for="simPlatform">Piattaforma di Origine</label>
+              <div class="platform-selector" id="platformSelector">
+                <button type="button" class="platform-btn active" data-platform="instagram">
+                  📸 Instagram
+                </button>
+                <button type="button" class="platform-btn" data-platform="facebook">
+                  📘 Facebook
+                </button>
+                <button type="button" class="platform-btn" data-platform="threads">
+                  🧵 Threads
+                </button>
+                <button type="button" class="platform-btn" data-platform="linkedin">
+                  💼 LinkedIn
+                </button>
+                <button type="button" class="platform-btn" data-platform="tiktok">
+                  🎵 TikTok
+                </button>
+                <button type="button" class="platform-btn" data-platform="x">
+                  🐦 X
+                </button>
+              </div>
+              <input type="hidden" id="simPlatform" value="instagram">
+            </div>
+
+            <div class="form-row">
+              <div class="form-group flex-1">
+                <label for="simAuthor">Username Utente</label>
+                <div class="input-prefix-wrapper">
+                  <span class="input-prefix">@</span>
+                  <input type="text" id="simAuthor" value="cliente_interessato" required>
+                </div>
+              </div>
+              <div class="form-group flex-1">
+                <label for="simPostSnippet">Argomento Post (opzionale)</label>
+                <input type="text" id="simPostSnippet" value="Nuova collezione estiva e prezzi">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="simCommentText">Testo del Commento</label>
+              <textarea id="simCommentText" rows="3" placeholder="Es: Ciao! Quanto costa la spedizione e in quanti giorni arriva?" required>Ciao! Quanto costa la spedizione e in quanti giorni arriva?</textarea>
+            </div>
+
+            <div class="simulator-presets">
+              <span class="preset-label">Commenti di prova rapidi:</span>
+              <button type="button" class="chip-btn" data-text="Quanto costa la spedizione e quanto tempo ci vuole?">📦 Spedizione</button>
+              <button type="button" class="chip-btn" data-text="Bello questo servizio! Come posso prenotare una consulenza?">📅 Prenotazione</button>
+              <button type="button" class="chip-btn" data-text="Il pacco non mi è ancora arrivato, potete aiutarmi?">⚠️ Reclamo</button>
+              <button type="button" class="chip-btn" data-text="Complimenti continuate così, siete fantastici! ❤️">👏 Complimento</button>
+            </div>
+
+            <div class="panel-footer">
+              <button type="submit" class="btn btn-primary" id="btnSimulate">
+                <span class="btn-icon">⚡</span> Simula Ricezione & Genera Risposta
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Right: Real-time Comments Feed -->
+        <div class="panel feed-panel">
+          <div class="panel-header">
+            <div>
+              <h2>📬 Inbox & Registro Commenti</h2>
+              <p class="panel-desc">Commenti ricevuti, bozze AI generate e stato di approvazione.</p>
+            </div>
+            <button class="btn btn-ghost" id="btnRefreshFeed">🔄 Aggiorna</button>
+          </div>
+
+          <div class="feed-list" id="feedList">
+            <div class="empty-state">
+              <span class="empty-icon">📭</span>
+              <p>Nessun commento ricevuto finora.<br>Usa il simulatore a sinistra per inviare il tuo primo commento di test!</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: BYOK & CONNECTIONS -->
+    <section id="tab-settings" class="tab-pane">
+      <div class="settings-grid">
+        <!-- AI Provider Selection -->
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <h2>🤖 BYOK (Bring Your Own Key) - Motore LLM</h2>
+              <p class="panel-desc">Inserisci la tua chiave API per sfruttare l'LLM che preferisci.</p>
+            </div>
+          </div>
+
+          <form id="aiSettingsForm" class="panel-body">
+            <div class="form-group">
+              <label for="aiProvider">Seleziona Provider AI Predefinito</label>
+              <select id="aiProvider" class="select-styled">
+                <option value="openai">OpenAI (GPT-4o-mini / GPT-4o)</option>
+                <option value="gemini">Google Gemini (Gemini 1.5 Flash / Pro)</option>
+                <option value="anthropic">Anthropic (Claude 3.5 Sonnet)</option>
+                <option value="groq">Groq (Llama 3.1 70B - Velocità Ultra)</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="aiModel">Modello Specifico</label>
+              <input type="text" id="aiModel" value="gpt-4o-mini" placeholder="es. gpt-4o-mini, gemini-1.5-flash">
+            </div>
+
+            <hr class="divider">
+
+            <div class="form-group">
+              <div class="label-with-status">
+                <label for="apiKeyOpenAI">Chiave API OpenAI</label>
+                <span class="key-status-badge" id="badgeOpenAI">Non configurata</span>
+              </div>
+              <input type="password" id="apiKeyOpenAI" placeholder="sk-...">
+            </div>
+
+            <div class="form-group">
+              <div class="label-with-status">
+                <label for="apiKeyGemini">Chiave API Google Gemini</label>
+                <span class="key-status-badge" id="badgeGemini">Non configurata</span>
+              </div>
+              <input type="password" id="apiKeyGemini" placeholder="AIzaSy...">
+            </div>
+
+            <div class="form-group">
+              <div class="label-with-status">
+                <label for="apiKeyAnthropic">Chiave API Anthropic Claude</label>
+                <span class="key-status-badge" id="badgeAnthropic">Non configurata</span>
+              </div>
+              <input type="password" id="apiKeyAnthropic" placeholder="sk-ant-...">
+            </div>
+
+            <div class="form-group">
+              <div class="label-with-status">
+                <label for="apiKeyGroq">Chiave API Groq</label>
+                <span class="key-status-badge" id="badgeGroq">Non configurata</span>
+              </div>
+              <input type="password" id="apiKeyGroq" placeholder="gsk_...">
+            </div>
+
+            <div class="panel-footer">
+              <button type="submit" class="btn btn-primary" id="btnSaveAISettings">
+                💾 Salva Chiavi & Provider
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Telegram Bot Settings -->
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <h2>✈️ Connessione Bot Telegram</h2>
+              <p class="panel-desc">Ricevi le bozze direttamente sul tuo smartphone e approva con 1 click.</p>
+            </div>
+          </div>
+
+          <form id="telegramSettingsForm" class="panel-body">
+            <div class="info-alert">
+              💡 <b>Come configurare Telegram in 1 minuto:</b>
+              <ol class="setup-steps">
+                <li>Apri Telegram e cerca <b>@BotFather</b> per creare un nuovo bot e ottenere il <code>Token</code>.</li>
+                <li>Avvia il tuo nuovo bot cliccando <b>/start</b>.</li>
+                <li>Cerca <b>@userinfobot</b> su Telegram per ottenere il tuo <code>Chat ID</code> numerico.</li>
+              </ol>
+            </div>
+
+            <div class="form-group">
+              <div class="label-with-status">
+                <label for="telegramBotToken">Bot Token</label>
+                <span class="key-status-badge" id="badgeTelegram">Non configurato</span>
+              </div>
+              <input type="password" id="telegramBotToken" placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz">
+            </div>
+
+            <div class="form-group">
+              <label for="telegramChatId">Admin Chat ID (Il tuo ID Telegram)</label>
+              <input type="text" id="telegramChatId" placeholder="es. 987654321">
+            </div>
+
+            <div class="panel-footer space-between">
+              <button type="button" class="btn btn-secondary" id="btnTestTelegram">
+                📲 Invia Messaggio di Test
+              </button>
+              <button type="submit" class="btn btn-primary" id="btnSaveTelegram">
+                💾 Salva Connessione
+              </button>
+            </div>
+          </form>
+
+          <!-- Social Endpoints Reference -->
+          <div class="panel-header mt-4">
+            <div>
+              <h3>🌐 Endpoint Webhook Ufficiali</h3>
+              <p class="panel-desc">Da inserire nella console Meta for Developers (Instagram / Facebook).</p>
+            </div>
+          </div>
+          <div class="panel-body">
+            <div class="code-box">
+              <span class="code-label">Callback URL (Meta):</span>
+              <code>https://tuo-dominio.com/api/webhooks/meta</code>
+            </div>
+            <div class="code-box">
+              <span class="code-label">Verify Token:</span>
+              <code>dnareplya_meta_verify_token_secure</code>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: GUARDRAILS & LIMITS -->
+    <section id="tab-guardrails" class="tab-pane">
+      <div class="panel max-w-4xl">
+        <div class="panel-header">
+          <div>
+            <h2>🛡️ Parametri, Limiti & Conoscenza Aziendale</h2>
+            <p class="panel-desc">Definisci i confini entro i quali l'AI formula le risposte per non commettere errori o inventare informazioni.</p>
+          </div>
+        </div>
+
+        <form id="guardrailsForm" class="panel-body">
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="toneOfVoice">Tono di Voce Predefinito</label>
+              <select id="toneOfVoice" class="select-styled">
+                <option value="friendly">😊 Amichevole & Caloroso (con emoji)</option>
+                <option value="professional">💼 Professionale & Istituzionale</option>
+                <option value="concise">⚡ Estremamente Sintetico & Diretto</option>
+                <option value="humorous">😄 Brillante & Simpatico</option>
+                <option value="custom">✏️ Personalizzato (definito sotto)</option>
+              </select>
+            </div>
+
+            <div class="form-group flex-1">
+              <label for="maxReplyLength">Lunghezza Massima Risposta (Caratteri): <span id="charLengthDisplay" class="highlight-val">280</span></label>
+              <input type="range" id="maxReplyLength" min="80" max="600" step="10" value="280" class="slider-styled">
+            </div>
+          </div>
+
+          <div class="form-group" id="customToneGroup">
+            <label for="customToneInstructions">Istruzioni Specifiche di Stile</label>
+            <textarea id="customToneInstructions" rows="2" placeholder="Es: Dai del 'tu', usa sempre la formula 'A presto dal team DNAReplya', sii rassicurante e mai polemico."></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="businessKnowledge">Base di Conoscenza & FAQ Aziendali (I Limiti di Risposta)</label>
+            <p class="field-hint">L'AI userà SOLO queste informazioni per rispondere su prezzi, tempi, spedizioni, resi e policy:</p>
+            <textarea id="businessKnowledge" rows="5" placeholder="Es:
+- Spedizione standard: 4,90€, gratuita sopra i 49€. Consegna in 24-48 ore con corriere espresso.
+- Reso: gratuito entro 14 giorni dall'ordine.
+- Orari assistenza: Lun-Ven dalle 9:00 alle 18:00 via email a supporto@brand.it.
+- Pagamenti accettati: Carta di credito, PayPal, Klarna in 3 rate."></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="forbiddenWords">Parole o Argomenti Vietati (Blacklist)</label>
+            <p class="field-hint">Termini separati da virgola che l'AI non deve MAI usare nelle risposte:</p>
+            <input type="text" id="forbiddenWords" placeholder="es. sconto speciale, gratuito, difettoso, colpa nostra, concorrente">
+          </div>
+
+          <hr class="divider">
+
+          <div class="autopilot-card">
+            <div class="autopilot-info">
+              <div class="autopilot-title">
+                <span class="autopilot-icon">⚡</span>
+                <div>
+                  <h4>Modalità Auto-Pilot (Risposta Diretta)</h4>
+                  <p>Se attivata, DNAReplya risponderà direttamente senza attendere la tua approvazione su Telegram per i commenti di routine.</p>
+                </div>
+              </div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="autoPilotToggle">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
+          <div class="panel-footer">
+            <button type="submit" class="btn btn-primary" id="btnSaveGuardrails">
+              💾 Salva Regole & Guardrails
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- TAB 4: LEARNING MEMORY -->
+    <section id="tab-memory" class="tab-pane">
+      <div class="panel max-w-5xl">
+        <div class="panel-header">
+          <div>
+            <h2>🧠 Memoria di Apprendimento (Few-Shot Store)</h2>
+            <p class="panel-desc">Ogni volta che approvi o modifichi una risposta, DNAReplya la memorizza qui. Questi esempi vengono usati dall'LLM per replicare esattamente il tuo stile e le tue preferenze.</p>
+          </div>
+          <button class="btn btn-ghost" id="btnRefreshMemory">🔄 Aggiorna Esempi</button>
+        </div>
+
+        <div class="panel-body">
+          <div id="memoryList" class="memory-grid">
+            <div class="empty-state">
+              <span class="empty-icon">🌱</span>
+              <p>Nessun esempio memorizzato al momento.<br>Appena approverai la tua prima risposta sul feed o da Telegram, verrà salvata qui per addestrare l'AI!</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Notification Toast Container -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- Manual Reply Modal -->
+  <div id="replyModal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>✏️ Modifica & Invia Risposta</h3>
+        <button class="modal-close" id="btnModalClose">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-comment-preview">
+          <span class="modal-author" id="modalAuthor">@utente</span>
+          <p class="modal-comment" id="modalComment">Testo del commento...</p>
+        </div>
+        <div class="form-group mt-3">
+          <label for="modalReplyText">La tua risposta:</label>
+          <textarea id="modalReplyText" rows="4" class="modal-textarea"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="btnModalCancel">Annulla</button>
+        <button class="btn btn-primary" id="btnModalSubmit">✅ Approva & Salva in Memoria</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
