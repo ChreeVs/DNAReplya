@@ -816,26 +816,50 @@ document.addEventListener('DOMContentLoaded', () => {
 
       selectMetaTargetProfile.innerHTML = `Profilo cliente: <b>${escapeHtml(data.profileName)}</b>`;
 
+      // Update badges
+      const fbCountPill = document.getElementById('fbCountPill');
+      const igCountPill = document.getElementById('igCountPill');
+      if (fbCountPill) fbCountPill.textContent = `${data.pages?.length || 0} Disponibili`;
+
       // 1. Render Facebook Pages Radios
       if (!data.pages || data.pages.length === 0) {
-        listFacebookPages.innerHTML = '<p class="field-hint">Nessuna pagina Facebook trovata per questo account.</p>';
+        listFacebookPages.innerHTML = '<p class="field-hint" style="padding:1rem;">Nessuna pagina Facebook trovata con permessi admin.</p>';
       } else {
         let pagesHtml = data.pages.map((p, index) => `
-          <div class="channel-radio-card ${index === 0 ? 'selected' : ''}">
-            <label class="channel-radio-label">
-              <input type="radio" name="selectedFacebookPage" value="${p.id}" ${index === 0 ? 'checked' : ''}>
-              <span>📘 ${escapeHtml(p.name)}</span>
-              <span class="channel-item-meta">${p.category ? escapeHtml(p.category) : 'Pagina'} (ID: ${p.id})</span>
-            </label>
+          <div class="meta-channel-tile ${index === 0 ? 'selected' : ''}" data-type="facebook" data-id="${p.id}">
+            <div class="tile-radio-indicator">
+              <div class="radio-inner-dot"></div>
+            </div>
+            <div class="tile-icon-box fb">
+              <span>📘</span>
+            </div>
+            <div class="tile-content">
+              <div class="tile-title-row">
+                <h5 class="tile-name">${escapeHtml(p.name)}</h5>
+                ${p.category ? `<span class="tile-category-badge">${escapeHtml(p.category)}</span>` : ''}
+              </div>
+              <div class="tile-meta-row">
+                <span class="tile-id">ID: ${p.id}</span>
+                ${p.hasInstagram ? `<span class="tile-badge-ig-linked">🔗 Instagram Business Collegato</span>` : ''}
+              </div>
+            </div>
+            <input type="radio" name="selectedFacebookPage" value="${p.id}" ${index === 0 ? 'checked' : ''} class="tile-native-radio">
           </div>
         `).join('');
 
         pagesHtml += `
-          <div class="channel-radio-card">
-            <label class="channel-radio-label">
-              <input type="radio" name="selectedFacebookPage" value="none">
-              <span style="color: var(--text-muted);">🚫 Non collegare alcuna pagina Facebook</span>
-            </label>
+          <div class="meta-channel-tile tile-opt-out" data-type="facebook" data-id="none">
+            <div class="tile-radio-indicator">
+              <div class="radio-inner-dot"></div>
+            </div>
+            <div class="tile-icon-box none">
+              <span>🚫</span>
+            </div>
+            <div class="tile-content">
+              <h5 class="tile-name text-muted">Nessuna Pagina Facebook</h5>
+              <span class="tile-meta-desc">Non associare pagine Facebook a questo profilo</span>
+            </div>
+            <input type="radio" name="selectedFacebookPage" value="none" class="tile-native-radio">
           </div>
         `;
         listFacebookPages.innerHTML = pagesHtml;
@@ -843,39 +867,59 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // 2. Render Instagram Accounts Radios
       const igPages = data.pages.filter(p => p.hasInstagram && p.instagram);
+      if (igCountPill) igCountPill.textContent = `${igPages.length} Disponibili`;
+
       if (igPages.length === 0) {
-        listInstagramAccounts.innerHTML = '<p class="field-hint">Nessun account Instagram Business associato alle tue pagine Facebook.</p>';
+        listInstagramAccounts.innerHTML = '<p class="field-hint" style="padding:1rem;">Nessun account Instagram Business associato alle tue pagine Facebook.</p>';
       } else {
         let igHtml = igPages.map((p, index) => `
-          <div class="channel-radio-card ${index === 0 ? 'selected' : ''}">
-            <label class="channel-radio-label">
-              <input type="radio" name="selectedInstagram" value="${p.instagram.id}" ${index === 0 ? 'checked' : ''}>
-              <span>📸 @${escapeHtml(p.instagram.username || p.instagram.name)}</span>
-              <span class="channel-item-meta">Collegato a: ${escapeHtml(p.name)}</span>
-            </label>
+          <div class="meta-channel-tile ${index === 0 ? 'selected' : ''}" data-type="instagram" data-id="${p.instagram.id}">
+            <div class="tile-radio-indicator">
+              <div class="radio-inner-dot"></div>
+            </div>
+            <div class="tile-icon-box ig">
+              <span>📸</span>
+            </div>
+            <div class="tile-content">
+              <div class="tile-title-row">
+                <h5 class="tile-name">@${escapeHtml(p.instagram.username || p.instagram.name)}</h5>
+                <span class="tile-category-badge ig-badge">IG Business</span>
+              </div>
+              <div class="tile-meta-row">
+                <span class="tile-meta-desc">Pagina associata: <b>${escapeHtml(p.name)}</b></span>
+              </div>
+            </div>
+            <input type="radio" name="selectedInstagram" value="${p.instagram.id}" ${index === 0 ? 'checked' : ''} class="tile-native-radio">
           </div>
         `).join('');
 
         igHtml += `
-          <div class="channel-radio-card">
-            <label class="channel-radio-label">
-              <input type="radio" name="selectedInstagram" value="none">
-              <span style="color: var(--text-muted);">🚫 Non collegare alcun profilo Instagram</span>
-            </label>
+          <div class="meta-channel-tile tile-opt-out" data-type="instagram" data-id="none">
+            <div class="tile-radio-indicator">
+              <div class="radio-inner-dot"></div>
+            </div>
+            <div class="tile-icon-box none">
+              <span>🚫</span>
+            </div>
+            <div class="tile-content">
+              <h5 class="tile-name text-muted">Nessun Profilo Instagram</h5>
+              <span class="tile-meta-desc">Non associare account Instagram a questo profilo</span>
+            </div>
+            <input type="radio" name="selectedInstagram" value="none" class="tile-native-radio">
           </div>
         `;
         listInstagramAccounts.innerHTML = igHtml;
       }
 
-      // Radio card click highlight
-      document.querySelectorAll('#listFacebookPages .channel-radio-card, #listInstagramAccounts .channel-radio-card').forEach(card => {
-        card.addEventListener('click', () => {
-          const radio = card.querySelector('input[type="radio"]');
+      // Enhanced tile click highlight
+      document.querySelectorAll('#listFacebookPages .meta-channel-tile, #listInstagramAccounts .meta-channel-tile').forEach(tile => {
+        tile.addEventListener('click', () => {
+          const radio = tile.querySelector('input[type="radio"]');
           if (radio) {
             radio.checked = true;
-            const container = card.closest('.channel-radio-list');
-            container.querySelectorAll('.channel-radio-card').forEach(c => c.classList.remove('selected'));
-            card.classList.add('selected');
+            const container = tile.closest('.channel-radio-grid');
+            container.querySelectorAll('.meta-channel-tile').forEach(t => t.classList.remove('selected'));
+            tile.classList.add('selected');
           }
         });
       });
@@ -1447,16 +1491,41 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     memoryList.innerHTML = items.map(item => `
-      <div class="memory-card">
+      <div class="memory-card" id="memory-card-${item.id}">
         <div class="memory-card-header">
-          <span class="card-platform-badge">${item.platform.toUpperCase()}</span>
-          <span class="memory-date">${new Date(item.created_at).toLocaleDateString('it-IT', { hour: '2-digit', minute: '2-digit' })}</span>
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span class="card-platform-badge">${item.platform.toUpperCase()}</span>
+            <span class="memory-date">${new Date(item.created_at).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+          </div>
+          <button class="btn-card-action reject" style="padding: 0.25rem 0.65rem; font-size: 0.76rem; border-radius: var(--radius-xs); display: flex; align-items: center; gap: 0.35rem;" onclick="window.deleteMemoryItem('${item.id}')" title="Elimina questo esempio dalla memoria di apprendimento dell'AI">
+            🗑️ Elimina
+          </button>
         </div>
         <div class="memory-comment">💬 "${escapeHtml(item.comment_text)}"</div>
         <div class="memory-reply">🎯 "${escapeHtml(item.approved_reply)}"</div>
       </div>
     `).join('');
   }
+
+  window.deleteMemoryItem = async (id) => {
+    if (!confirm('Sei sicuro di voler eliminare questo commento dalla memoria di apprendimento dell\'AI? L\'AI non utilizzerà più questo esempio per comporre le future risposte.')) {
+      return;
+    }
+
+    try {
+      showToast('Eliminazione in corso...', 'info');
+      const res = await apiFetch(`/api/comments/approved-memory/${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        showToast('🗑️ Esempio rimosso con successo dalla memoria AI', 'success');
+        await loadActiveProfileMemory();
+      } else {
+        showToast(`❌ Errore: ${data.error}`, 'error');
+      }
+    } catch (err) {
+      showToast('❌ Errore durante l\'eliminazione dalla memoria', 'error');
+    }
+  };
 
   btnRefreshMemory.addEventListener('click', loadActiveProfileMemory);
 

@@ -659,38 +659,56 @@
 
   <!-- MODAL: SELEZIONA CANALI META PER IL PROFILO CLIENTE -->
   <div id="selectMetaChannelsModal" class="modal-overlay hidden">
-    <div class="modal-card max-w-2xl">
+    <div class="modal-card meta-select-modal-card">
       <div class="modal-header">
         <div>
-          <h3>🎯 Scegli Canali per il Profilo</h3>
+          <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
+            <h3>🎯 Scegli Canali per il Profilo</h3>
+            <span class="channel-scope-badge">1 Facebook · 1 Instagram</span>
+          </div>
           <p class="panel-desc mt-1" id="selectMetaTargetProfile">Profilo cliente: <b>...</b></p>
         </div>
         <button class="modal-close" id="btnCloseSelectMetaModal">&times;</button>
       </div>
-      <form id="selectMetaChannelsForm" class="modal-body">
-        <p class="field-hint mb-4" style="line-height: 1.45;">
-          Meta ha rilevato i canali di cui sei amministratore. Seleziona <b>la singola pagina Facebook</b> e/o <b>il profilo Instagram</b> dedicati a questo specifico cliente:
+      <form id="selectMetaChannelsForm" class="modal-body" style="padding-top: 1rem;">
+        <p class="field-hint mb-4" style="line-height: 1.5; font-size: 0.85rem;">
+          Meta ha rilevato i canali di cui sei amministratore. Seleziona <b>la singola pagina Facebook</b> e/o <b>il profilo Instagram</b> dedicati a questo brand per isolare le risposte e la memoria d'apprendimento:
         </p>
 
-        <!-- SEZIONE PAGINE FACEBOOK -->
-        <div class="mb-5">
-          <h4 class="section-title-sm mb-3">📘 Pagina Facebook (Seleziona 1):</h4>
-          <div class="channel-radio-list" id="listFacebookPages">
-            <!-- Dynamic radio cards -->
+        <!-- GRID A 2 COLONNE: FACEBOOK & INSTAGRAM -->
+        <div class="meta-channels-grid-container mb-5">
+          <!-- COLONNA 1: FACEBOOK -->
+          <div class="meta-channel-column">
+            <div class="meta-channel-column-header">
+              <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <span class="social-header-icon fb">📘</span>
+                <h4 class="section-title-sm">Pagina Facebook</h4>
+              </div>
+              <span class="channel-count-pill" id="fbCountPill">Seleziona 1</span>
+            </div>
+            <div class="channel-radio-grid" id="listFacebookPages">
+              <!-- Dynamic radio cards -->
+            </div>
+          </div>
+
+          <!-- COLONNA 2: INSTAGRAM -->
+          <div class="meta-channel-column">
+            <div class="meta-channel-column-header">
+              <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <span class="social-header-icon ig">📸</span>
+                <h4 class="section-title-sm">Profilo Instagram</h4>
+              </div>
+              <span class="channel-count-pill" id="igCountPill">Seleziona 1</span>
+            </div>
+            <div class="channel-radio-grid" id="listInstagramAccounts">
+              <!-- Dynamic radio cards -->
+            </div>
           </div>
         </div>
 
-        <!-- SEZIONE ACCOUNT INSTAGRAM -->
-        <div class="mb-5">
-          <h4 class="section-title-sm mb-3">📸 Profilo Instagram (Seleziona 1):</h4>
-          <div class="channel-radio-list" id="listInstagramAccounts">
-            <!-- Dynamic radio cards -->
-          </div>
-        </div>
-
-        <div class="modal-footer" style="padding: 1rem 0 0 0;">
+        <div class="modal-footer" style="padding: 1.25rem 0 0 0; border-top: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center;">
           <button type="button" class="btn btn-ghost" id="btnCancelSelectMetaModal">Annulla</button>
-          <button type="submit" class="btn btn-primary" id="btnSubmitSelectMeta">
+          <button type="submit" class="btn btn-primary" id="btnSubmitSelectMeta" style="padding: 0.75rem 1.75rem; font-weight: 700;">
             💾 Collega Canali Selezionati
           </button>
         </div>

@@ -520,4 +520,11 @@ export const dbRepository = {
     });
     return res.rows as unknown as ApprovedReplyRecord[];
   },
+
+  async deleteApprovedReply(id: string | number): Promise<void> {
+    await db.execute({
+      sql: 'DELETE FROM approved_replies WHERE id = ?',
+      args: [Number(id)],
+    });
+  },
 };

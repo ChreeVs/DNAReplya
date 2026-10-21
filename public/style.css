@@ -1753,5 +1753,296 @@ input:checked + .toggle-slider:before {
   box-shadow: 0 10px 30px rgba(56, 189, 248, 0.2);
 }
 
+/* ==========================================================================
+   Meta Channels Selection Modal - 2-Column Responsive Grid Layout
+   ========================================================================== */
+
+.meta-select-modal-card {
+  width: 95%;
+  max-width: 1040px;
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.channel-scope-badge {
+  font-size: 0.72rem;
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  background: rgba(163, 230, 53, 0.15);
+  color: var(--lime);
+  border: 1px solid rgba(163, 230, 53, 0.35);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.meta-channels-grid-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  gap: 1.25rem;
+  align-items: stretch;
+}
+
+.meta-channel-column {
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 1.15rem;
+  display: flex;
+  flex-direction: column;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.meta-channel-column-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.social-header-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  font-size: 1rem;
+}
+
+.social-header-icon.fb {
+  background: rgba(24, 119, 242, 0.18);
+  border: 1px solid rgba(24, 119, 242, 0.35);
+}
+
+.social-header-icon.ig {
+  background: linear-gradient(135deg, rgba(225, 48, 108, 0.2), rgba(131, 58, 180, 0.2));
+  border: 1px solid rgba(225, 48, 108, 0.35);
+}
+
+.channel-count-pill {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-subtle);
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+}
+
+.channel-radio-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+  max-height: 400px;
+  overflow-y: auto;
+  padding-right: 0.35rem;
+}
+
+/* Custom sleek scrollbar */
+.channel-radio-grid::-webkit-scrollbar {
+  width: 6px;
+}
+.channel-radio-grid::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+.channel-radio-grid::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+}
+.channel-radio-grid::-webkit-scrollbar-thumb:hover {
+  background: var(--lime);
+}
+
+/* Meta Channel Tiles */
+.meta-channel-tile {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.85rem 1rem;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1.5px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+}
+
+.meta-channel-tile:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(163, 230, 53, 0.35);
+  transform: translateY(-1px);
+}
+
+.meta-channel-tile.selected {
+  background: rgba(163, 230, 53, 0.07);
+  border-color: var(--lime);
+  box-shadow: 0 4px 18px rgba(163, 230, 53, 0.18);
+}
+
+/* Radio Indicator */
+.tile-radio-indicator {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.meta-channel-tile:hover .tile-radio-indicator {
+  border-color: var(--lime);
+}
+
+.meta-channel-tile.selected .tile-radio-indicator {
+  border-color: var(--lime);
+  box-shadow: 0 0 10px rgba(163, 230, 53, 0.5);
+}
+
+.radio-inner-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--lime);
+  transform: scale(0);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.meta-channel-tile.selected .radio-inner-dot {
+  transform: scale(1);
+}
+
+/* Tile Icon Box */
+.tile-icon-box {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15rem;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.tile-icon-box.fb {
+  background: rgba(24, 119, 242, 0.12);
+  border-color: rgba(24, 119, 242, 0.3);
+}
+
+.tile-icon-box.ig {
+  background: linear-gradient(135deg, rgba(225, 48, 108, 0.15), rgba(131, 58, 180, 0.15));
+  border-color: rgba(225, 48, 108, 0.3);
+}
+
+.tile-icon-box.none {
+  background: rgba(255, 255, 255, 0.02);
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+/* Tile Content */
+.tile-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.tile-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.2rem;
+}
+
+.tile-name {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+}
+
+.tile-name.text-muted {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.tile-category-badge {
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-dim);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.tile-category-badge.ig-badge {
+  background: rgba(225, 48, 108, 0.12);
+  color: #f472b6;
+  border-color: rgba(225, 48, 108, 0.25);
+}
+
+.tile-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.74rem;
+  color: var(--text-dim);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.tile-badge-ig-linked {
+  font-size: 0.66rem;
+  font-weight: 700;
+  color: var(--accent-cyan);
+  background: rgba(34, 211, 238, 0.1);
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  font-family: inherit;
+}
+
+.tile-meta-desc {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+.tile-opt-out {
+  border-style: dashed;
+  opacity: 0.85;
+}
+
+.tile-opt-out:hover {
+  opacity: 1;
+}
+
+.tile-native-radio {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Delete Memory Button */
+.btn-delete-memory {
+  transition: all 0.2s ease;
+}
+.btn-delete-memory:hover {
+  background: rgba(244, 63, 94, 0.15) !important;
+  border-color: rgba(244, 63, 94, 0.5) !important;
+  color: #fda4af !important;
+  transform: scale(1.02);
+}
+
+
 
 

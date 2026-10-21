@@ -82,6 +82,20 @@ router.get('/approved-memory', async (req: Request, res: Response) => {
   }
 });
 
+// DELETE a specific item from approved replies memory
+router.delete('/approved-memory/:id', async (req: Request, res: Response) => {
+  try {
+    const memoryId = String(req.params.id);
+    if (!memoryId) {
+      return res.status(400).json({ success: false, error: 'ID elemento mancante' });
+    }
+    await dbRepository.deleteApprovedReply(memoryId);
+    res.json({ success: true, message: 'Elemento rimosso dalla memoria di apprendimento' });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // POST approve a comment from dashboard
 router.post('/:id/approve', async (req: Request, res: Response) => {
   try {
