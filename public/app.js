@@ -1594,10 +1594,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Extract real human author name instead of raw numerical fb_id
       let authorDisplayName = c.author_name;
-      if (!authorDisplayName || authorDisplayName === 'Utente Social' || authorDisplayName.startsWith('fb_') || authorDisplayName.startsWith('utente_')) {
-        if (c.author_username && !c.author_username.startsWith('fb_') && !c.author_username.startsWith('utente_')) {
+      if (!authorDisplayName || authorDisplayName === 'Utente Social' || authorDisplayName === 'Utente Facebook' || authorDisplayName.startsWith('fb_') || authorDisplayName.startsWith('utente_')) {
+        if (c.author_username && !c.author_username.startsWith('fb_') && !c.author_username.startsWith('utente_') && c.author_username !== 'Utente Facebook') {
           authorDisplayName = c.author_username.replace(/^@/, '');
-        } else {
+        } else if (!authorDisplayName) {
           authorDisplayName = c.platform === 'facebook' ? 'Utente Facebook' : 'Utente Instagram';
         }
       }
@@ -1855,6 +1855,56 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  // --- Sync Timer & Countdown Logic ---
+  let syncSecondsRemaining = 900;
+  let syncTimerInterval = null;
+  const syncTimerCountdown = document.getElementById('syncTimerCountdown');
+
+  function updateSyncTimerDisplay() {
+    if (!syncTimerCountdown) return;
+    const mins = Math.floor(syncSecondsRemaining / 60);
+    const secs = syncSecondsRemaining % 60;
+    syncTimerCountdown.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  }
+
+  async function fetchSyncStatus() {
+    try {
+      const res = await apiFetch('/api/comments/sync-status');
+      const data = await res.json();
+      if (data.success && typeof data.secondsRemaining === 'number') {
+        syncSecondsRemaining = data.secondsRemaining;
+        updateSyncTimerDisplay();
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  function startSyncTimer() {
+    if (syncTimerInterval) clearInterval(syncTimerInterval);
+    updateSyncTimerDisplay();
+
+    syncTimerInterval = setInterval(async () => {
+      if (syncSecondsRemaining > 0) {
+        syncSecondsRemaining--;
+        updateSyncTimerDisplay();
+      } else {
+        syncSecondsRemaining = 900;
+        updateSyncTimerDisplay();
+        if (activeProfile) {
+          await loadActiveProfileComments();
+        }
+        await fetchSyncStatus();
+      }
+    }, 1000);
+  }
+
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      fetchSyncStatus();
+    }
+  });
+
   if (btnSyncLiveComments) {
     btnSyncLiveComments.addEventListener('click', async () => {
       if (!activeProfile) {
@@ -1868,6 +1918,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const data = await res.json();
         if (data.success) {
           showToast(`✅ ${data.message}`, 'success');
+          syncSecondsRemaining = 900;
+          updateSyncTimerDisplay();
+          await fetchSyncStatus();
           await loadActiveProfileComments();
         } else {
           showToast(`❌ Errore: ${data.error}`, 'error');
@@ -2388,6 +2441,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     await loadProfiles();
     await loadGlobalSettings();
+    fetchSyncStatus();
+    startSyncTimer();
 
     // Check if returning from Facebook OAuth with a selection session
     const urlParams = new URLSearchParams(window.location.search);

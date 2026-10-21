@@ -80,10 +80,17 @@ export class MetaSyncService {
     const pageName = (acc.account_name || '').trim().toLowerCase();
     let newCount = 0;
 
-    // Fetch up to 10 latest posts with up to 25 latest comments each (with from{id,name} and permalink_url)
-    const url = `https://graph.facebook.com/v20.0/${pageId}/feed?fields=id,message,permalink_url,created_time,comments.limit(25){id,message,from{id,name},created_time,permalink_url}&limit=10&access_token=${token}`;
-    const res = await fetch(url);
-    const data = await res.json() as any;
+    // Fetch up to 10 latest posts with up to 50 latest comments each (trying published_posts first, fallback to feed)
+    let url = `https://graph.facebook.com/v20.0/${pageId}/published_posts?fields=id,message,permalink_url,created_time,comments.limit(50){id,message,from{id,name},created_time,permalink_url}&limit=10&access_token=${token}`;
+    let res = await fetch(url);
+    let data = await res.json() as any;
+
+    if (!data.data || !Array.isArray(data.data) || data.data.length === 0) {
+      // Fallback to /feed if published_posts is empty
+      url = `https://graph.facebook.com/v20.0/${pageId}/feed?fields=id,message,permalink_url,created_time,comments.limit(50){id,message,from{id,name},created_time,permalink_url}&limit=10&access_token=${token}`;
+      res = await fetch(url);
+      data = await res.json() as any;
+    }
 
     if (!data.data || !Array.isArray(data.data)) {
       if (data.error) throw new Error(data.error.message);
@@ -119,30 +126,40 @@ export class MetaSyncService {
 
         // If authorName is missing, attempt direct query on comment node or user node with Page Access Token
         if (!authorName && commentId) {
-          try {
-            const detailRes = await fetch(`https://graph.facebook.com/v20.0/${commentId}?fields=from{id,name}&access_token=${token}`);
-            if (detailRes.ok) {
-              const detailData = await detailRes.json() as any;
-              if (detailData.from?.name) {
-                authorName = detailData.from.name.trim();
-                authorId = detailData.from.id ? String(detailData.from.id) : authorId;
+          const cleanId = commentId.replace(/^fb_/, '').trim();
+          const candidateIds = [cleanId];
+          if (cleanId.includes('_')) candidateIds.push(cleanId.split('_')[1]);
+
+          for (const testId of candidateIds) {
+            if (authorName) break;
+            try {
+              const detailRes = await fetch(`https://graph.facebook.com/v20.0/${testId}?fields=from{id,name},message&access_token=${token}`);
+              if (detailRes.ok) {
+                const detailData = await detailRes.json() as any;
+                if (detailData.from?.name) {
+                  authorName = detailData.from.name.trim();
+                  authorId = detailData.from.id ? String(detailData.from.id) : authorId;
+                } else if (detailData.from?.id && !authorId) {
+                  authorId = String(detailData.from.id);
+                }
               }
+            } catch {
+              // ignore
             }
-          } catch (e) {
-            // ignore
           }
         }
 
         if (!authorName && authorId) {
           try {
-            const userRes = await fetch(`https://graph.facebook.com/v20.0/${authorId}?fields=name&access_token=${token}`);
+            const userRes = await fetch(`https://graph.facebook.com/v20.0/${authorId}?fields=name,short_name,first_name,last_name&access_token=${token}`);
             if (userRes.ok) {
               const userData = await userRes.json() as any;
-              if (userData.name) {
-                authorName = userData.name.trim();
+              const nameCandidate = userData.name || (userData.first_name ? `${userData.first_name} ${userData.last_name || ''}`.trim() : '');
+              if (nameCandidate) {
+                authorName = nameCandidate;
               }
             }
-          } catch (e) {
+          } catch {
             // ignore
           }
         }

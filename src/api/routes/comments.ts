@@ -5,6 +5,7 @@ import { TikTokSyncService } from '../../services/social/tiktokSync.js';
 import { MetaPublisherService } from '../../services/social/metaPublisher.js';
 import { TikTokPublisherService } from '../../services/social/tiktokPublisher.js';
 import { AIOrchestrator } from '../../services/ai/orchestrator.js';
+import { SchedulerService } from '../../services/scheduler/index.js';
 
 const router = Router();
 
@@ -34,15 +35,38 @@ router.get('/', async (req: Request, res: Response) => {
           const commId = c.platform_comment_id;
 
           if (token && commId) {
-            const detailRes = await fetch(`https://graph.facebook.com/v20.0/${commId}?fields=from{id,name}&access_token=${token}`);
-            if (detailRes.ok) {
-              const detailData = await detailRes.json() as any;
-              if (detailData.from?.name) {
-                const realName = detailData.from.name.trim();
-                c.author_name = realName;
-                c.author_username = realName;
-                await dbRepository.updateComment(c.id, { author_name: realName, author_username: realName });
+            const cleanId = commId.replace(/^fb_/, '').trim();
+            const candidateIds = [cleanId];
+            if (cleanId.includes('_')) candidateIds.push(cleanId.split('_')[1]);
+
+            let resolvedName = '';
+            for (const testId of candidateIds) {
+              if (resolvedName) break;
+              try {
+                const detailRes = await fetch(`https://graph.facebook.com/v20.0/${testId}?fields=from{id,name},message&access_token=${token}`);
+                if (detailRes.ok) {
+                  const detailData = await detailRes.json() as any;
+                  if (detailData.from?.name) {
+                    resolvedName = detailData.from.name.trim();
+                  } else if (detailData.from?.id) {
+                    const uRes = await fetch(`https://graph.facebook.com/v20.0/${detailData.from.id}?fields=name,short_name,first_name,last_name&access_token=${token}`);
+                    if (uRes.ok) {
+                      const uData = await uRes.json() as any;
+                      const nameCand = uData.name || (uData.first_name ? `${uData.first_name} ${uData.last_name || ''}`.trim() : '');
+                      if (nameCand) resolvedName = nameCand;
+                    }
+                  }
+                }
+              } catch {
+                // ignore
               }
+            }
+
+            if (resolvedName) {
+              console.log(`[Facebook Name Resolved] Commento ${commId} -> ${resolvedName}`);
+              c.author_name = resolvedName;
+              c.author_username = resolvedName;
+              await dbRepository.updateComment(c.id, { author_name: resolvedName, author_username: resolvedName });
             }
           }
         } catch {
@@ -57,15 +81,24 @@ router.get('/', async (req: Request, res: Response) => {
   }
 });
 
-// GET /api/comments/cron-check - Endpoint per trigger esterno (es. cron-job.org ogni 3 ore)
+// GET /api/comments/sync-status - Restituisce countdown e orario prossimo sync automatico
+router.get('/sync-status', (req: Request, res: Response) => {
+  res.json({ success: true, ...SchedulerService.getSyncStatus() });
+});
+
+// GET /api/comments/cron-check - Endpoint per trigger esterno
 router.get('/cron-check', async (req: Request, res: Response) => {
   try {
     console.log('[Comments Route] Avvio controllo commenti periodico /cron-check...');
-    const result = await MetaSyncService.syncAllProfilesComments();
+    SchedulerService.notifyManualSync();
+    const metaRes = await MetaSyncService.syncAllProfilesComments();
+    const tiktokRes = await TikTokSyncService.syncAllProfilesComments();
     res.json({
       success: true,
       timestamp: new Date().toISOString(),
-      ...result,
+      meta: metaRes,
+      tiktok: tiktokRes,
+      totalNew: metaRes.totalNewComments + tiktokRes.totalNewComments,
     });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
@@ -80,6 +113,7 @@ router.post('/sync', async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, error: 'profileId mancante' });
     }
 
+    SchedulerService.notifyManualSync();
     const metaRes = await MetaSyncService.syncCommentsForProfile(profileId);
     const tiktokRes = await TikTokSyncService.syncCommentsForProfile(profileId);
     const totalNew = metaRes.newCommentsFound + tiktokRes.newCommentsFound;
@@ -92,6 +126,7 @@ router.post('/sync', async (req: Request, res: Response) => {
       tiktok: tiktokRes,
       newCommentsFound: totalNew,
       checkedAccounts: totalChecked,
+      syncStatus: SchedulerService.getSyncStatus(),
     });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });

@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/style.css?v=2.5">
+  <link rel="stylesheet" href="/style.css?v=2.6">
 </head>
 <body>
   <!-- Header Bar -->
@@ -164,6 +164,10 @@
             </div>
 
             <div class="inbox-subbar-actions">
+              <div class="sync-timer-badge" id="syncTimerBadge" title="Tempo rimanente alla prossima sincronizzazione automatica dei commenti">
+                <span class="sync-pulse-dot"></span>
+                <span class="sync-timer-text">Prossimo sync: <strong id="syncTimerCountdown">15:00</strong></span>
+              </div>
               <button class="btn btn-secondary btn-sm" id="btnSyncLiveComments" title="Controlla subito Facebook, Instagram e TikTok per nuovi commenti">
                 ⚡ Sincronizza Live
               </button>
@@ -1508,6 +1512,6 @@
   <!-- Toast Notification Container -->
   <div id="toastContainer" class="toast-container"></div>
 
-  <script src="/app.js?v=2.5"></script>
+  <script src="/app.js?v=2.6"></script>
 </body>
 </html>

@@ -55,8 +55,8 @@ router.post('/meta', (req: Request, res: Response) => {
 
               if (verb === 'add' || itemType === 'comment') {
                 const commentText = val.message || val.text;
-                const authorId = val.from?.id ? String(val.from.id) : '';
-                const authorName = (val.from?.name || '').trim();
+                let authorId = val.from?.id ? String(val.from.id) : '';
+                let authorName = (val.from?.name || '').trim();
 
                 // Skip comments made by the account itself
                 if (authorId && (authorId === String(entryId) || authorId === String(matchedAccount?.external_account_id))) {
@@ -66,9 +66,42 @@ router.post('/meta', (req: Request, res: Response) => {
                   continue;
                 }
 
-                const authorUsername = authorName || (authorId ? `utente_${authorId.slice(-6)}` : 'utente_meta');
+                // If authorName is missing, attempt Graph API resolution
                 const commentId = val.comment_id || val.id || `meta_${Date.now()}`;
                 const postId = val.post_id || val.media?.id || '';
+
+                if (!authorName && matchedAccount?.access_token) {
+                  const token = matchedAccount.access_token;
+                  const cleanCommId = commentId.replace(/^fb_/, '').trim();
+                  const candidateIds = [cleanCommId];
+                  if (cleanCommId.includes('_')) candidateIds.push(cleanCommId.split('_')[1]);
+
+                  for (const cid of candidateIds) {
+                    if (authorName) break;
+                    try {
+                      const cRes = await fetch(`https://graph.facebook.com/v20.0/${cid}?fields=from{id,name},message&access_token=${token}`);
+                      if (cRes.ok) {
+                        const cData = await cRes.json() as any;
+                        if (cData.from?.name) authorName = cData.from.name.trim();
+                        if (cData.from?.id && !authorId) authorId = String(cData.from.id);
+                      }
+                    } catch {}
+                  }
+
+                  if (!authorName && authorId) {
+                    try {
+                      const uRes = await fetch(`https://graph.facebook.com/v20.0/${authorId}?fields=name,short_name,first_name,last_name&access_token=${token}`);
+                      if (uRes.ok) {
+                        const uData = await uRes.json() as any;
+                        const nameCand = uData.name || (uData.first_name ? `${uData.first_name} ${uData.last_name || ''}`.trim() : '');
+                        if (nameCand) authorName = nameCand;
+                      }
+                    } catch {}
+                  }
+                }
+
+                const displayAuthorName = authorName || (platform === 'facebook' ? 'Utente Facebook' : 'Utente Instagram');
+                const authorUsername = authorName || (authorId ? `utente_${authorId.slice(-6)}` : 'utente_meta');
 
                 if (commentText) {
                   // Check if comment was previously deleted or already exists
@@ -98,6 +131,7 @@ router.post('/meta', (req: Request, res: Response) => {
                     platform_post_id: postId,
                     platform_comment_id: commentId,
                     author_username: authorUsername,
+                    author_name: displayAuthorName,
                     comment_text: commentText,
                     proposed_reply: aiResult.proposedReply,
                     final_reply: isAutoPilot ? aiResult.proposedReply : '',
