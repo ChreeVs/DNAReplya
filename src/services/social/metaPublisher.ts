@@ -39,6 +39,17 @@ export class MetaPublisherService {
       let url = '';
 
       if (platform === 'facebook') {
+        // Auto-Like Facebook comment if enabled for this profile
+        try {
+          const profile = await dbRepository.getProfileById(comment.profile_id);
+          const shouldLike = profile ? (profile.auto_like_facebook !== 0) : true;
+          if (shouldLike) {
+            await this.likeFacebookComment(comment.platform_comment_id, accessToken);
+          }
+        } catch (likeErr: any) {
+          console.warn('[MetaPublisher] Auto-like Facebook non riuscito:', likeErr.message);
+        }
+
         // Facebook Graph API: POST /{comment_id}/comments
         url = `https://graph.facebook.com/v20.0/${comment.platform_comment_id}/comments`;
       } else if (platform === 'instagram') {
@@ -75,6 +86,41 @@ export class MetaPublisherService {
     } catch (err: any) {
       console.error('[MetaPublisher Exception]', err);
       return { success: false, error: err.message || 'Timeout o errore di rete con le API Meta' };
+    }
+  }
+
+  /**
+   * Puts a "Like" reaction on a Facebook comment using the Page Access Token
+   */
+  static async likeFacebookComment(platformCommentId: string, accessToken: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      if (!platformCommentId || !accessToken) return { success: false, error: 'Parametri mancanti' };
+
+      const likeUrl = `https://graph.facebook.com/v20.0/${platformCommentId}/likes`;
+      const formParams = new URLSearchParams();
+      formParams.append('access_token', accessToken);
+
+      const res = await fetch(likeUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: formParams.toString(),
+        signal: AbortSignal.timeout(6000),
+      });
+
+      const data = await res.json() as any;
+      if (data.success || data === true || data.id) {
+        console.log(`[MetaPublisher] ❤️ Like automatico messo al commento Facebook ${platformCommentId}`);
+        return { success: true };
+      } else {
+        const errMsg = data.error?.message || JSON.stringify(data);
+        console.warn(`[MetaPublisher] Impossibile mettere Like a Facebook ${platformCommentId}:`, errMsg);
+        return { success: false, error: errMsg };
+      }
+    } catch (err: any) {
+      console.warn(`[MetaPublisher] Eccezione auto-like Facebook ${platformCommentId}:`, err.message);
+      return { success: false, error: err.message };
     }
   }
 }

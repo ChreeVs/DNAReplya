@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/style.css?v=2.4">
+  <link rel="stylesheet" href="/style.css?v=2.5">
 </head>
 <body>
   <!-- Header Bar -->
@@ -409,6 +409,20 @@
             </div>
             <label class="toggle-switch">
               <input type="checkbox" id="profAutoPilotToggle">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
+          <div class="autopilot-card" style="margin-top: 1rem; border-color: rgba(59, 130, 246, 0.35);">
+            <div class="autopilot-info">
+              <span class="autopilot-icon" style="color: #60a5fa;">❤️</span>
+              <div>
+                <h4>Auto-Like ai Commenti Facebook</h4>
+                <p>Mette automaticamente "Mi Piace" con la Pagina Facebook al commento prima di inviare la risposta (manuale, bulk o autopilot).</p>
+              </div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="profAutoLikeFacebookToggle" checked>
               <span class="toggle-slider"></span>
             </label>
           </div>
@@ -1494,6 +1508,6 @@
   <!-- Toast Notification Container -->
   <div id="toastContainer" class="toast-container"></div>
 
-  <script src="/app.js?v=2.4"></script>
+  <script src="/app.js?v=2.5"></script>
 </body>
 </html>

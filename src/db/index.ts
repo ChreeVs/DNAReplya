@@ -67,6 +67,7 @@ export interface ProfileRecord {
   business_knowledge: string;
   auto_pilot_enabled: number;
   auto_pilot_min_confidence: number;
+  auto_like_facebook?: number;
   telegram_bot_token: string;
   telegram_chat_id: string;
   created_at: string;
@@ -126,6 +127,13 @@ export async function initDatabase(): Promise<void> {
   // Migration: ensure logo_url column exists in profiles if table already existed
   try {
     await db.execute('ALTER TABLE profiles ADD COLUMN logo_url TEXT DEFAULT ""');
+  } catch (e) {
+    // Column already exists, ignore
+  }
+
+  // Migration: ensure auto_like_facebook column exists in profiles
+  try {
+    await db.execute('ALTER TABLE profiles ADD COLUMN auto_like_facebook INTEGER DEFAULT 1');
   } catch (e) {
     // Column already exists, ignore
   }

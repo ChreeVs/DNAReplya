@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS profiles (
   business_knowledge TEXT DEFAULT '',
   auto_pilot_enabled INTEGER DEFAULT 0,
   auto_pilot_min_confidence REAL DEFAULT 0.85,
+  auto_like_facebook INTEGER DEFAULT 1,
   telegram_bot_token TEXT DEFAULT '',
   telegram_chat_id TEXT DEFAULT '',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,

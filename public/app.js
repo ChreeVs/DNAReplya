@@ -114,6 +114,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const profTelegramToken = document.getElementById('profTelegramToken');
   const profTelegramChatId = document.getElementById('profTelegramChatId');
   const profAutoPilotToggle = document.getElementById('profAutoPilotToggle');
+  const profAutoLikeFacebookToggle = document.getElementById('profAutoLikeFacebookToggle');
 
   // DOM Elements - Tab 4: Memory
   const memoryList = document.getElementById('memoryList');
@@ -2120,6 +2121,9 @@ document.addEventListener('DOMContentLoaded', () => {
     profTelegramToken.value = activeProfile.telegram_bot_token || '';
     profTelegramChatId.value = activeProfile.telegram_chat_id || '';
     profAutoPilotToggle.checked = Boolean(activeProfile.auto_pilot_enabled);
+    if (profAutoLikeFacebookToggle) {
+      profAutoLikeFacebookToggle.checked = activeProfile.auto_like_facebook !== 0;
+    }
   }
 
   profMaxReplyLength.addEventListener('input', (e) => {
@@ -2141,6 +2145,7 @@ document.addEventListener('DOMContentLoaded', () => {
       telegram_bot_token: profTelegramToken.value,
       telegram_chat_id: profTelegramChatId.value,
       auto_pilot_enabled: profAutoPilotToggle.checked ? 1 : 0,
+      auto_like_facebook: profAutoLikeFacebookToggle ? (profAutoLikeFacebookToggle.checked ? 1 : 0) : 1,
     };
 
     try {
