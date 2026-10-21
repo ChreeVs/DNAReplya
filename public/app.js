@@ -122,6 +122,16 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnCloseConnectModal = document.getElementById('btnCloseConnectModal');
   const btnCancelConnectModal = document.getElementById('btnCancelConnectModal');
 
+  const btnOpenTikTokModal = document.getElementById('btnOpenTikTokModal');
+  const connectTikTokModal = document.getElementById('connectTikTokModal');
+  const btnCloseTikTokModal = document.getElementById('btnCloseTikTokModal');
+  const btnCancelTikTokModal = document.getElementById('btnCancelTikTokModal');
+  const connectTikTokForm = document.getElementById('connectTikTokForm');
+  const ttAccountName = document.getElementById('ttAccountName');
+  const ttAccountHandle = document.getElementById('ttAccountHandle');
+  const ttAccessToken = document.getElementById('ttAccessToken');
+  const ttBusinessId = document.getElementById('ttBusinessId');
+
   const ingestModal = document.getElementById('ingestModal');
   const ingestCommentForm = document.getElementById('ingestCommentForm');
   const btnCloseIngestModal = document.getElementById('btnCloseIngestModal');
@@ -772,6 +782,65 @@ document.addEventListener('DOMContentLoaded', () => {
   btnCloseConnectModal.addEventListener('click', () => connectAccountModal.classList.add('hidden'));
   btnCancelConnectModal.addEventListener('click', () => connectAccountModal.classList.add('hidden'));
 
+  // Connect TikTok Business Modal Handler
+  if (btnOpenTikTokModal) {
+    btnOpenTikTokModal.addEventListener('click', () => {
+      if (!activeProfile) {
+        showToast('⚠️ Seleziona prima un profilo cliente a cui collegare TikTok', 'error');
+        return;
+      }
+      connectTikTokModal.classList.remove('hidden');
+    });
+  }
+  if (btnCloseTikTokModal) btnCloseTikTokModal.addEventListener('click', () => connectTikTokModal.classList.add('hidden'));
+  if (btnCancelTikTokModal) btnCancelTikTokModal.addEventListener('click', () => connectTikTokModal.classList.add('hidden'));
+
+  if (connectTikTokForm) {
+    connectTikTokForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!activeProfile) return;
+
+      const submitBtn = document.getElementById('btnSubmitTikTok');
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = '⏳ Salvataggio...';
+      }
+
+      const payload = {
+        platform: 'tiktok',
+        account_name: ttAccountName.value.trim(),
+        account_handle: ttAccountHandle.value.trim().replace(/^@/, ''),
+        access_token: ttAccessToken.value.trim(),
+        external_account_id: ttBusinessId.value.trim(),
+        notes: 'TikTok Business Account (Uso Interno)',
+      };
+
+      try {
+        const res = await apiFetch(`/api/profiles/${activeProfile.id}/accounts`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast('🎵 Account TikTok collegato con successo!', 'success');
+          connectTikTokModal.classList.add('hidden');
+          connectTikTokForm.reset();
+          await loadActiveProfileChannels();
+        } else {
+          showToast(`❌ Errore: ${data.error}`, 'error');
+        }
+      } catch (err) {
+        showToast('❌ Errore di rete durante il salvataggio TikTok', 'error');
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = '🎵 Salva e Collega TikTok';
+        }
+      }
+    });
+  }
+
   connectAccountForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!activeProfile) return;
@@ -781,6 +850,7 @@ document.addEventListener('DOMContentLoaded', () => {
       account_name: document.getElementById('connAccountName').value.trim(),
       account_handle: document.getElementById('connAccountHandle').value.trim(),
       external_account_id: document.getElementById('connExternalId').value.trim(),
+      access_token: document.getElementById('connAccessToken')?.value.trim() || '',
     };
 
     try {

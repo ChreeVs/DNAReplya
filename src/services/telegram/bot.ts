@@ -1,6 +1,7 @@
 import { dbRepository, CommentRecord } from '../../db/index.js';
 import { AIOrchestrator } from '../ai/orchestrator.js';
 import { MetaPublisherService } from '../social/metaPublisher.js';
+import { TikTokPublisherService } from '../social/tiktokPublisher.js';
 
 export class TelegramBotService {
   private static isPolling = false;
@@ -171,8 +172,12 @@ ${comment.post_snippet ? `📌 <b>Post:</b> <i>"${this.escapeHtml(comment.post_s
       }
 
       if (action === 'appr') {
-        // Publish to Facebook/Instagram
-        await MetaPublisherService.publishReply(comment.id, comment.proposed_reply);
+        // Publish to TikTok or Facebook/Instagram
+        if (comment.platform?.toLowerCase() === 'tiktok') {
+          await TikTokPublisherService.publishReply(comment.id, comment.proposed_reply);
+        } else {
+          await MetaPublisherService.publishReply(comment.id, comment.proposed_reply);
+        }
 
         await dbRepository.updateComment(comment.id, {
           status: 'approved',
@@ -265,6 +270,12 @@ ${comment.post_snippet ? `📌 <b>Post:</b> <i>"${this.escapeHtml(comment.post_s
         const comment = await dbRepository.getCommentById(commentId);
 
         if (comment) {
+          if (comment.platform?.toLowerCase() === 'tiktok') {
+            await TikTokPublisherService.publishReply(comment.id, text);
+          } else {
+            await MetaPublisherService.publishReply(comment.id, text);
+          }
+
           await dbRepository.updateComment(comment.id, {
             status: 'modified',
             final_reply: text,

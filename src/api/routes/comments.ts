@@ -1,7 +1,9 @@
 import { Router, Request, Response } from 'express';
 import { dbRepository } from '../../db/index.js';
 import { MetaSyncService } from '../../services/social/metaSync.js';
+import { TikTokSyncService } from '../../services/social/tiktokSync.js';
 import { MetaPublisherService } from '../../services/social/metaPublisher.js';
+import { TikTokPublisherService } from '../../services/social/tiktokPublisher.js';
 import { AIOrchestrator } from '../../services/ai/orchestrator.js';
 
 const router = Router();
@@ -43,7 +45,7 @@ router.get('/cron-check', async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/comments/sync - Sincronizzazione manuale per il profilo attivo dal frontend
+// POST /api/comments/sync - Sincronizzazione manuale per il profilo attivo dal frontend (Meta + TikTok)
 router.post('/sync', async (req: Request, res: Response) => {
   try {
     const profileId = req.query.profileId as string || req.body.profileId;
@@ -51,11 +53,18 @@ router.post('/sync', async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, error: 'profileId mancante' });
     }
 
-    const result = await MetaSyncService.syncCommentsForProfile(profileId);
+    const metaRes = await MetaSyncService.syncCommentsForProfile(profileId);
+    const tiktokRes = await TikTokSyncService.syncCommentsForProfile(profileId);
+    const totalNew = metaRes.newCommentsFound + tiktokRes.newCommentsFound;
+    const totalChecked = metaRes.checkedAccounts + tiktokRes.checkedAccounts;
+
     res.json({
       success: true,
-      message: `Sincronizzazione completata: controllati ${result.checkedAccounts} canali, trovati ${result.newCommentsFound} nuovi commenti.`,
-      ...result,
+      message: `Sincronizzazione completata: controllati ${totalChecked} canali, trovati ${totalNew} nuovi commenti (${metaRes.newCommentsFound} Meta, ${tiktokRes.newCommentsFound} TikTok).`,
+      meta: metaRes,
+      tiktok: tiktokRes,
+      newCommentsFound: totalNew,
+      checkedAccounts: totalChecked,
     });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
@@ -107,10 +116,16 @@ router.post('/:id/approve', async (req: Request, res: Response) => {
 
     const finalReply = req.body?.final_reply || comment.proposed_reply || '';
 
-    // 1. Publish directly to Facebook or Instagram via Graph API
-    const publishRes = await MetaPublisherService.publishReply(comment.id, finalReply);
+    // 1. Publish directly to Facebook, Instagram or TikTok
+    let publishRes: { success: boolean; error?: string; publishedId?: string };
+    if (comment.platform?.toLowerCase() === 'tiktok') {
+      publishRes = await TikTokPublisherService.publishReply(comment.id, finalReply);
+    } else {
+      publishRes = await MetaPublisherService.publishReply(comment.id, finalReply);
+    }
+
     if (!publishRes.success) {
-      console.warn(`[Comments Route] Avviso: pubblicazione Graph API ha restituito: ${publishRes.error}`);
+      console.warn(`[Comments Route] Avviso: pubblicazione ${comment.platform} ha restituito: ${publishRes.error}`);
     }
 
     // 2. Update status in local DB
@@ -136,7 +151,7 @@ router.post('/:id/approve', async (req: Request, res: Response) => {
       publishError: publishRes.error,
       message: publishRes.success
         ? `Risposta approvata e pubblicata su ${comment.platform.toUpperCase()}!`
-        : `Risposta approvata localmente (avviso Meta: ${publishRes.error || 'Invio non riuscito'})`,
+        : `Risposta approvata localmente (avviso ${comment.platform.toUpperCase()}: ${publishRes.error || 'Invio non riuscito'})`,
     });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });

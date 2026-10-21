@@ -1,5 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { dbRepository } from '../../db/index.js';
+import { MetaSyncService } from '../../services/social/metaSync.js';
+import { TikTokSyncService } from '../../services/social/tiktokSync.js';
 
 const router = Router();
 
@@ -132,6 +134,35 @@ router.delete('/:id/accounts/:accountId', async (req: Request, res: Response) =>
     const accountId = String(req.params.accountId);
     await dbRepository.deleteSocialAccount(accountId);
     res.json({ success: true, message: 'Account social disconnesso' });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST sync all channels (Meta + TikTok) for this profile
+router.post('/:id/sync-all', async (req: Request, res: Response) => {
+  try {
+    const profileId = String(req.params.id);
+    const metaRes = await MetaSyncService.syncCommentsForProfile(profileId);
+    const tiktokRes = await TikTokSyncService.syncCommentsForProfile(profileId);
+    res.json({
+      success: true,
+      meta: metaRes,
+      tiktok: tiktokRes,
+      totalNewComments: metaRes.newCommentsFound + tiktokRes.newCommentsFound,
+      message: `Sincronizzazione completata: ${metaRes.newCommentsFound} da Meta, ${tiktokRes.newCommentsFound} da TikTok`,
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST sync TikTok comments specifically for this profile
+router.post('/:id/tiktok/sync', async (req: Request, res: Response) => {
+  try {
+    const profileId = String(req.params.id);
+    const result = await TikTokSyncService.syncCommentsForProfile(profileId);
+    res.json({ success: true, ...result });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }

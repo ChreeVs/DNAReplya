@@ -9,6 +9,7 @@ import { requireAuth } from './api/middleware/auth.js';
 
 import { SchedulerService } from './services/scheduler/index.js';
 import { MetaSyncService } from './services/social/metaSync.js';
+import { TikTokSyncService } from './services/social/tiktokSync.js';
 
 import authRouter from './api/routes/auth.js';
 import profilesRouter from './api/routes/profiles.js';
@@ -37,8 +38,15 @@ app.use('/api/webhooks', webhooksRouter);
 app.get('/api/cron/check-comments', async (req, res) => {
   try {
     console.log('[External Cron] Trigger ricevuto per /api/cron/check-comments');
-    const result = await MetaSyncService.syncAllProfilesComments();
-    res.json({ success: true, timestamp: new Date().toISOString(), ...result });
+    const metaResult = await MetaSyncService.syncAllProfilesComments();
+    const tiktokResult = await TikTokSyncService.syncAllProfilesComments();
+    res.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      meta: metaResult,
+      tiktok: tiktokResult,
+      totalNewComments: metaResult.totalNewComments + tiktokResult.totalNewComments,
+    });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }

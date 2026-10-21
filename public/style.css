@@ -752,6 +752,27 @@ select:focus {
   color: #fff !important;
 }
 
+.btn-tiktok {
+  background: #000000;
+  color: #ffffff !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-weight: 700;
+  border: 1px solid rgba(0, 242, 254, 0.4);
+  box-shadow: 0 4px 16px rgba(0, 242, 254, 0.2), inset 0 0 10px rgba(255, 0, 79, 0.15);
+  transition: var(--transition);
+}
+
+.btn-tiktok:hover {
+  background: #0a0a0a;
+  border-color: #00f2fe;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(0, 242, 254, 0.35), 0 0 12px rgba(255, 0, 79, 0.3);
+  color: #ffffff !important;
+}
+
 .oauth-connect-box {
   background: rgba(24, 119, 242, 0.08);
   border: 1px solid rgba(24, 119, 242, 0.28);
