@@ -13,21 +13,26 @@
 <body>
   <!-- Header Bar -->
   <header class="app-header">
+    <!-- Left: Brand Logo & Profile Switcher -->
     <div class="header-left">
       <div class="brand-logo">
         <span class="logo-icon">🧬</span>
         <div class="logo-text">
           <h1>DNAReplya</h1>
-          <span class="logo-sub">Multi-Profile AI Social Hub</span>
+          <span class="logo-sub">Multi-Profile AI Hub</span>
         </div>
       </div>
 
+      <div class="header-divider"></div>
+
       <!-- Profile Switcher Dropdown (Workspace Switcher like Manychat) -->
       <div class="profile-switcher-wrapper">
-        <button class="profile-switcher-btn" id="btnProfileDropdown">
+        <button class="profile-switcher-btn" id="btnProfileDropdown" title="Seleziona Profilo Cliente">
           <span class="profile-badge-dot" id="headerProfileDot"></span>
           <span class="profile-active-name" id="headerProfileName">Caricamento...</span>
-          <span class="dropdown-chevron">▼</span>
+          <svg class="dropdown-chevron-svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
         </button>
         <div class="profile-dropdown-menu hidden" id="profileDropdownMenu">
           <div class="dropdown-header">
@@ -41,39 +46,58 @@
       </div>
     </div>
 
-    <!-- Navigation Tabs -->
+    <!-- Center: Navigation Tabs (Modern Segmented Control) -->
     <nav class="header-nav">
       <button class="nav-tab active" data-tab="tab-inbox" id="tabBtnInbox">
-        <span class="tab-icon">📬</span> Inbox Commenti <span class="nav-counter" id="inboxCountBadge">0</span>
+        <span class="tab-icon">📬</span>
+        <span class="tab-label">Inbox</span>
+        <span class="nav-counter" id="inboxCountBadge">0</span>
       </button>
       <button class="nav-tab" data-tab="tab-channels" id="tabBtnChannels">
-        <span class="tab-icon">🌐</span> Canali Social <span class="nav-counter" id="channelsCountBadge">0</span>
+        <span class="tab-icon">🌐</span>
+        <span class="tab-label">Canali</span>
+        <span class="nav-counter" id="channelsCountBadge">0</span>
       </button>
       <button class="nav-tab" data-tab="tab-guardrails" id="tabBtnGuardrails">
-        <span class="tab-icon">🛡️</span> Regole & Limiti
+        <span class="tab-icon">🛡️</span>
+        <span class="tab-label">Regole</span>
       </button>
       <button class="nav-tab" data-tab="tab-memory" id="tabBtnMemory">
-        <span class="tab-icon">🧠</span> Memoria AI (<span id="memoryCountBadge">0</span>)
+        <span class="tab-icon">🧠</span>
+        <span class="tab-label">Memoria AI</span>
+        <span class="nav-counter" id="memoryCountBadge">0</span>
       </button>
       <button class="nav-tab" data-tab="tab-byok" id="tabBtnBYOK">
-        <span class="tab-icon">🔑</span> Chiavi LLM (BYOK)
+        <span class="tab-icon">🔑</span>
+        <span class="tab-label">Chiavi LLM</span>
       </button>
       <button class="nav-tab" data-tab="tab-docs" id="tabBtnDocs">
-        <span class="tab-icon">📖</span> Documentazione
+        <span class="tab-icon">📖</span>
+        <span class="tab-label">Documentazione</span>
       </button>
+    </nav>
 
-      <!-- User Session Area -->
+    <!-- Right: User Session Area -->
+    <div class="header-right">
       <div class="user-session-wrapper" id="userSessionWrapper">
-        <button class="btn-team-admin hidden" id="btnOpenTeamModal" title="Richieste Approvazione Team">
-          👥 Team <span class="badge-pending" id="badgePendingUsers">0</span>
+        <button class="btn-team-admin hidden" id="btnOpenTeamModal" title="Richieste Approvazione Collaboratori">
+          <span class="team-icon">👥</span>
+          <span>Team</span>
+          <span class="badge-pending" id="badgePendingUsers">0</span>
         </button>
-        <div class="user-profile-badge">
+        <div class="user-profile-badge" title="Account Attivo">
           <span class="user-avatar-dot"></span>
           <span class="user-name" id="navUserName">Utente</span>
         </div>
-        <button class="btn-logout" id="btnLogout" title="Disconnetti">🚪</button>
+        <button class="btn-logout" id="btnLogout" title="Disconnetti dalla sessione">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+            <polyline points="16 17 21 12 16 7"></polyline>
+            <line x1="21" y1="12" x2="9" y2="12"></line>
+          </svg>
+        </button>
       </div>
-    </nav>
+    </div>
   </header>
 
   <!-- Main Container -->
