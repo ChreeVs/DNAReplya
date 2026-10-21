@@ -18,8 +18,9 @@ export const config = {
     groqApiKey: process.env.GROQ_API_KEY || '',
   },
   meta: {
-    verifyToken: process.env.META_VERIFY_TOKEN || 'dnareplya_meta_verify_token_secure',
+    appId: process.env.META_APP_ID || '1064485339977852',
     appSecret: process.env.META_APP_SECRET || '',
+    verifyToken: process.env.META_VERIFY_TOKEN || 'dnareplya_meta_verify_token_secure',
     pageAccessToken: process.env.META_PAGE_ACCESS_TOKEN || '',
   },
 };

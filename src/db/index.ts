@@ -390,6 +390,33 @@ export const dbRepository = {
     return res.rows[0] as unknown as SocialAccountRecord;
   },
 
+  async upsertSocialAccount(data: {
+    profile_id: string;
+    platform: SocialAccountRecord['platform'];
+    account_name: string;
+    account_handle: string;
+    external_account_id?: string;
+    access_token?: string;
+    notes?: string;
+  }): Promise<SocialAccountRecord> {
+    if (data.external_account_id) {
+      const existing = await db.execute({
+        sql: 'SELECT * FROM social_accounts WHERE profile_id = ? AND platform = ? AND external_account_id = ?',
+        args: [data.profile_id, data.platform, data.external_account_id],
+      });
+      if (existing.rows.length > 0) {
+        const id = existing.rows[0].id as string;
+        await db.execute({
+          sql: `UPDATE social_accounts SET account_name = ?, account_handle = ?, access_token = ?, status = 'connected', notes = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+          args: [data.account_name, data.account_handle, data.access_token || '', data.notes || '', id],
+        });
+        const res = await db.execute({ sql: 'SELECT * FROM social_accounts WHERE id = ?', args: [id] });
+        return res.rows[0] as unknown as SocialAccountRecord;
+      }
+    }
+    return this.createSocialAccount(data);
+  },
+
   async deleteSocialAccount(id: string): Promise<void> {
     await db.execute({ sql: 'DELETE FROM social_accounts WHERE id = ?', args: [id] });
   },

@@ -12,6 +12,7 @@ import profilesRouter from './api/routes/profiles.js';
 import settingsRouter from './api/routes/settings.js';
 import commentsRouter from './api/routes/comments.js';
 import webhooksRouter from './api/routes/webhooks.js';
+import metaOAuthRouter from './api/routes/metaOAuth.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -26,6 +27,7 @@ app.use(express.static(publicDir));
 
 // Public Auth & Webhooks Routes
 app.use('/api/auth', authRouter);
+app.use('/api/auth', metaOAuthRouter);
 app.use('/api/webhooks', webhooksRouter);
 
 // Protected Internal Routes (Requires Auth)

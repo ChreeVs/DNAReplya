@@ -624,6 +624,74 @@ select:focus {
   background: rgba(255, 255, 255, 0.05);
 }
 
+.btn-facebook {
+  background: #1877f2;
+  color: #fff !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-weight: 700;
+  box-shadow: 0 4px 16px rgba(24, 119, 242, 0.35);
+  transition: var(--transition);
+}
+
+.btn-facebook:hover {
+  background: #166fe5;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(24, 119, 242, 0.5);
+  color: #fff !important;
+}
+
+.oauth-connect-box {
+  background: rgba(24, 119, 242, 0.08);
+  border: 1px solid rgba(24, 119, 242, 0.28);
+  border-radius: var(--radius-md);
+  padding: 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.oauth-connect-info {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+}
+
+.oauth-connect-info strong {
+  display: block;
+  font-size: 0.95rem;
+  color: #fff;
+  margin-bottom: 0.2rem;
+}
+
+.oauth-connect-info p {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.divider-text {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 1.25rem 0;
+  color: var(--text-dim);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.divider-text::before,
+.divider-text::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.divider-text span {
+  padding: 0 0.75rem;
+}
+
 /* Channel Cards Grid */
 .channels-grid {
   display: grid;

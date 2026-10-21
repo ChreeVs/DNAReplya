@@ -60,6 +60,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // DOM Elements - Tab 2: Channels
   const channelsGrid = document.getElementById('channelsGrid');
   const btnOpenConnectModal = document.getElementById('btnOpenConnectModal');
+  const btnConnectFacebook = document.getElementById('btnConnectFacebook');
+  const btnConnectFacebookModal = document.getElementById('btnConnectFacebookModal');
 
   // DOM Elements - Tab 3: Guardrails
   const profileGuardrailsForm = document.getElementById('profileGuardrailsForm');
@@ -690,7 +692,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  // Connect Account Modal
+  // Connect Account Modal & Facebook OAuth
+  function initiateFacebookOAuth() {
+    if (!activeProfile) {
+      showToast('⚠️ Seleziona prima un profilo cliente a cui collegare i canali', 'error');
+      return;
+    }
+    // Save current active profile ID in localStorage in case state needs to be preserved
+    localStorage.setItem('dnareplya_oauth_profile', activeProfile.id);
+    window.location.href = `/api/auth/facebook?profileId=${encodeURIComponent(activeProfile.id)}`;
+  }
+
+  if (btnConnectFacebook) btnConnectFacebook.addEventListener('click', initiateFacebookOAuth);
+  if (btnConnectFacebookModal) btnConnectFacebookModal.addEventListener('click', initiateFacebookOAuth);
+
   btnOpenConnectModal.addEventListener('click', () => connectAccountModal.classList.remove('hidden'));
   btnCloseConnectModal.addEventListener('click', () => connectAccountModal.classList.add('hidden'));
   btnCancelConnectModal.addEventListener('click', () => connectAccountModal.classList.add('hidden'));
@@ -1186,6 +1201,26 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     await loadProfiles();
     await loadGlobalSettings();
+
+    // Check if returning from Facebook OAuth
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('fb_connected') === 'success') {
+      const count = urlParams.get('count') || '0';
+      showToast(`🎉 Connessione Meta riuscita! ${count} canali collegati con successo.`, 'success');
+      // If we saved an active profile, re-select it
+      const savedProfileId = localStorage.getItem('dnareplya_oauth_profile');
+      if (savedProfileId && profiles.some(p => p.id === savedProfileId)) {
+        selectProfile(savedProfileId);
+      }
+      // Switch to channels tab
+      const channelsNavBtn = document.querySelector('.nav-tab[data-tab="tab-channels"]');
+      if (channelsNavBtn) channelsNavBtn.click();
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (urlParams.get('fb_error')) {
+      const err = urlParams.get('fb_error');
+      showToast(`❌ Errore Meta OAuth: ${decodeURIComponent(err)}`, 'error');
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
   }
 
   checkAuthSession().then(authenticated => {
