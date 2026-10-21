@@ -343,37 +343,83 @@ document.addEventListener('DOMContentLoaded', () => {
   btnCancelTeamModal.addEventListener('click', () => teamModal.classList.add('hidden'));
 
   async function renderTeamModal() {
-    teamList.innerHTML = '<p class="field-hint">Caricamento collaboratori in corso...</p>';
+    teamList.innerHTML = '<p class="field-hint">Caricamento directory utenti...</p>';
     try {
-      const res = await apiFetch('/api/auth/pending-users');
+      const res = await apiFetch('/api/auth/all-users');
       const data = await res.json();
       if (!data.success) return;
 
-      const users = data.users;
-      if (!users || users.length === 0) {
-        teamList.innerHTML = `
-          <div class="empty-state">
-            <span class="empty-icon">👥</span>
-            <p>Nessuna richiesta di accesso in attesa.<br>Tutti i collaboratori registrati sono stati approvati.</p>
+      const users = data.users || [];
+      const pending = users.filter(u => !u.is_approved);
+      const active = users.filter(u => u.is_approved);
+
+      badgePendingUsers.textContent = pending.length;
+      badgePendingUsers.style.display = pending.length > 0 ? 'inline-block' : 'none';
+
+      let html = '';
+
+      // Section 1: Pending Approvals
+      html += `
+        <div class="team-section mb-6">
+          <h4 style="font-size:0.82rem;font-weight:700;color:var(--lime);margin-bottom:0.75rem;text-transform:uppercase;letter-spacing:0.05em;">
+            ⏳ Richieste in Attesa (${pending.length})
+          </h4>
+      `;
+
+      if (pending.length === 0) {
+        html += '<p class="field-hint" style="padding:0.75rem;background:rgba(255,255,255,0.02);border-radius:var(--radius-xs);">Nessuna richiesta in attesa di approvazione.</p>';
+      } else {
+        html += pending.map(u => `
+          <div class="team-member-card mb-3" style="border-left: 3px solid var(--accent-amber);">
+            <div class="member-info">
+              <h4>${escapeHtml(u.name)}</h4>
+              <p>${escapeHtml(u.email)} · Richiesto il ${new Date(u.created_at).toLocaleDateString('it-IT')}</p>
+            </div>
+            <div class="member-actions">
+              <button class="btn btn-primary btn-sm" onclick="window.approveTeamUser('${u.id}')">🟢 Approva</button>
+              <button class="btn btn-ghost btn-sm" onclick="window.rejectTeamUser('${u.id}')">❌ Rifiuta</button>
+            </div>
           </div>
-        `;
-        return;
+        `).join('');
       }
 
-      teamList.innerHTML = users.map(u => `
-        <div class="team-member-card">
-          <div class="member-info">
-            <h4>${escapeHtml(u.name)}</h4>
-            <p>${escapeHtml(u.email)} · Richiesto il ${new Date(u.created_at).toLocaleDateString('it-IT')}</p>
-          </div>
-          <div class="member-actions">
-            <button class="btn btn-primary btn-sm" onclick="window.approveTeamUser('${u.id}')">🟢 Approva</button>
-            <button class="btn btn-ghost btn-sm" onclick="window.rejectTeamUser('${u.id}')">❌ Rifiuta</button>
-          </div>
-        </div>
-      `).join('');
+      html += '</div>';
+
+      // Section 2: Active / Approved Users
+      html += `
+        <div class="team-section">
+          <h4 style="font-size:0.82rem;font-weight:700;color:var(--text-muted);margin-bottom:0.75rem;text-transform:uppercase;letter-spacing:0.05em;">
+            ✅ Utenti Registrati & Attivi (${active.length})
+          </h4>
+      `;
+
+      if (active.length === 0) {
+        html += '<p class="field-hint">Nessun utente registrato.</p>';
+      } else {
+        html += active.map(u => {
+          const isOwner = u.role === 'admin' || u.email.toLowerCase().includes('christian.valese');
+          return `
+            <div class="team-member-card mb-3">
+              <div class="member-info">
+                <h4>
+                  ${escapeHtml(u.name)} 
+                  ${isOwner ? '<span style="font-size:0.68rem;padding:0.15rem 0.5rem;border-radius:999px;background:rgba(163,230,53,0.15);color:var(--lime);font-weight:700;margin-left:0.4rem;">👑 Super Admin</span>' : '<span style="font-size:0.68rem;padding:0.15rem 0.5rem;border-radius:999px;background:rgba(34,211,238,0.15);color:var(--accent-cyan);font-weight:700;margin-left:0.4rem;">● Abilitato</span>'}
+                </h4>
+                <p>${escapeHtml(u.email)} · Registrato il ${new Date(u.created_at).toLocaleDateString('it-IT')}</p>
+              </div>
+              <div class="member-actions">
+                ${!isOwner ? `<button class="btn btn-ghost btn-sm" style="color:var(--accent-rose);border-color:rgba(244,63,94,0.3);" onclick="window.rejectTeamUser('${u.id}')">Revoca Accesso</button>` : '<span style="font-size:0.75rem;color:var(--text-dim);">Titolare</span>'}
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      html += '</div>';
+
+      teamList.innerHTML = html;
     } catch (e) {
-      teamList.innerHTML = '<p class="auth-alert error">Errore caricamento richieste team</p>';
+      teamList.innerHTML = '<p class="auth-alert error">Errore caricamento directory utenti</p>';
     }
   }
 

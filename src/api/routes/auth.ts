@@ -216,6 +216,16 @@ router.get('/me', requireAuth, (req: AuthenticatedRequest, res: Response) => {
   res.json({ success: true, user: req.user });
 });
 
+// GET All Registered Users for Admin Directory (Protected Admin)
+router.get('/all-users', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const users = await dbRepository.getAllUsers();
+    res.json({ success: true, users });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // GET Pending Users for Admin Review (Protected Admin)
 router.get('/pending-users', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
