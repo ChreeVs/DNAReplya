@@ -129,6 +129,13 @@ export async function initDatabase(): Promise<void> {
     // Column already exists, ignore
   }
 
+  // Migration: ensure deleted_comments blacklist table exists
+  try {
+    await db.execute('CREATE TABLE IF NOT EXISTS deleted_comments (platform_comment_id TEXT PRIMARY KEY, deleted_at DATETIME DEFAULT CURRENT_TIMESTAMP)');
+  } catch (e) {
+    // Table already exists, ignore
+  }
+
   // Ensure default profile "Scarabocchi Saggi" exists
   const existing = await db.execute('SELECT COUNT(*) as count FROM profiles');
   const count = Number(existing.rows[0]?.count || 0);
@@ -451,7 +458,57 @@ export const dbRepository = {
     return res.rows[0] as unknown as CommentRecord | undefined;
   },
 
+  async recordDeletedComment(platformCommentId: string): Promise<void> {
+    if (!platformCommentId) return;
+    try {
+      await db.execute({
+        sql: 'INSERT OR IGNORE INTO deleted_comments (platform_comment_id) VALUES (?)',
+        args: [String(platformCommentId)],
+      });
+    } catch (e) {
+      // ignore
+    }
+  },
+
+  async isPlatformCommentDeleted(platformCommentId: string): Promise<boolean> {
+    if (!platformCommentId) return false;
+    try {
+      const res = await db.execute({
+        sql: 'SELECT 1 FROM deleted_comments WHERE platform_comment_id = ? LIMIT 1',
+        args: [String(platformCommentId)],
+      });
+      return res.rows.length > 0;
+    } catch (e) {
+      return false;
+    }
+  },
+
   async insertComment(comment: Partial<CommentRecord> & { profile_id: string; comment_text: string }): Promise<CommentRecord> {
+    // Safeguard: do not re-insert comments previously deleted from the inbox
+    if (comment.platform_comment_id && await this.isPlatformCommentDeleted(comment.platform_comment_id)) {
+      console.log(`[Database] Inserimento ignorato: il commento ${comment.platform_comment_id} è stato precedentemente eliminato dall'inbox.`);
+      const existing = await this.findCommentByPlatformCommentId(comment.platform_comment_id);
+      if (existing) return existing;
+      return {
+        id: comment.id || `comm_ignored`,
+        profile_id: comment.profile_id,
+        social_account_id: comment.social_account_id || null,
+        platform: comment.platform || 'instagram',
+        platform_post_id: comment.platform_post_id || '',
+        platform_comment_id: comment.platform_comment_id || '',
+        author_username: comment.author_username || 'utente_social',
+        author_name: comment.author_name || 'Utente Social',
+        comment_text: comment.comment_text,
+        post_snippet: comment.post_snippet || '',
+        received_at: new Date().toISOString(),
+        proposed_reply: comment.proposed_reply || '',
+        final_reply: comment.final_reply || '',
+        status: 'rejected',
+        telegram_message_id: null,
+        replied_at: null,
+      };
+    }
+
     const id = comment.id || `comm_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
     await db.execute({
       sql: `
@@ -496,6 +553,22 @@ export const dbRepository = {
   },
 
   async deleteComment(id: string): Promise<void> {
+    try {
+      const comment = await this.getCommentById(id);
+      if (comment) {
+        if (comment.platform_comment_id) {
+          await this.recordDeletedComment(comment.platform_comment_id);
+        }
+        if (comment.id) {
+          await this.recordDeletedComment(comment.id);
+        }
+      } else {
+        await this.recordDeletedComment(id);
+      }
+    } catch (err) {
+      console.error('[Database] Errore registrazione blacklist commenti:', err);
+    }
+
     await db.execute({
       sql: 'DELETE FROM comments WHERE id = ?',
       args: [id],

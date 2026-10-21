@@ -109,7 +109,10 @@ export class MetaSyncService {
           continue; // Skip self comments!
         }
 
-        // 2. Check if comment already exists in database
+        // 2. Check if comment was previously deleted or already exists in database
+        const isDeleted = await dbRepository.isPlatformCommentDeleted(commentId) || await dbRepository.isPlatformCommentDeleted(`fb_${commentId}`);
+        if (isDeleted) continue;
+
         const existing = await dbRepository.findCommentByPlatformCommentId(commentId);
         if (existing) continue;
 
@@ -204,7 +207,10 @@ export class MetaSyncService {
           continue; // Skip self comments!
         }
 
-        // 2. Check if comment already exists
+        // 2. Check if comment was previously deleted or already exists
+        const isDeleted = await dbRepository.isPlatformCommentDeleted(commentId) || await dbRepository.isPlatformCommentDeleted(`ig_${commentId}`);
+        if (isDeleted) continue;
+
         const existing = await dbRepository.findCommentByPlatformCommentId(commentId);
         if (existing) continue;
 

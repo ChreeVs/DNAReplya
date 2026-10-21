@@ -154,7 +154,10 @@ export class TikTokSyncService {
             continue;
           }
 
-          // Check if comment already exists in database
+          // Check if comment was previously deleted or already exists in database
+          const isDeleted = await dbRepository.isPlatformCommentDeleted(commentId) || await dbRepository.isPlatformCommentDeleted(`tt_${commentId}`);
+          if (isDeleted) continue;
+
           const existing = await dbRepository.findCommentByPlatformCommentId(commentId);
           if (existing) continue;
 

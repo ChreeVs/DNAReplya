@@ -107,8 +107,15 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Deleted Comments Blacklist (evita che i commenti eliminati vengano risincronizzati da Meta o TikTok)
+CREATE TABLE IF NOT EXISTS deleted_comments (
+  platform_comment_id TEXT PRIMARY KEY,
+  deleted_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE INDEX IF NOT EXISTS idx_comments_profile_id ON comments(profile_id);
 CREATE INDEX IF NOT EXISTS idx_comments_status ON comments(status);
 CREATE INDEX IF NOT EXISTS idx_social_accounts_profile ON social_accounts(profile_id);
 CREATE INDEX IF NOT EXISTS idx_approved_replies_profile ON approved_replies(profile_id);
+CREATE INDEX IF NOT EXISTS idx_deleted_comments_id ON deleted_comments(platform_comment_id);
 `;

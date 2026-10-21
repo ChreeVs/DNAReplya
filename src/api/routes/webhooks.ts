@@ -71,6 +71,13 @@ router.post('/meta', (req: Request, res: Response) => {
                 const postId = val.post_id || val.media?.id || '';
 
                 if (commentText) {
+                  // Check if comment was previously deleted or already exists
+                  const isDeleted = await dbRepository.isPlatformCommentDeleted(commentId) || await dbRepository.isPlatformCommentDeleted(`fb_${commentId}`) || await dbRepository.isPlatformCommentDeleted(`ig_${commentId}`);
+                  if (isDeleted) continue;
+
+                  const existing = await dbRepository.findCommentByPlatformCommentId(commentId);
+                  if (existing) continue;
+
                   // 1. Generate AI Reply using this Profile's rules and memory
                   const aiResult = await AIOrchestrator.generateReply({
                     profileId,
