@@ -38,6 +38,19 @@ export interface GlobalSettings {
   updated_at: string;
 }
 
+export interface UserRecord {
+  id: string;
+  email: string;
+  name: string;
+  password_hash: string;
+  salt: string;
+  role: 'admin' | 'member';
+  is_approved: number;
+  approval_token: string;
+  created_at: string;
+  approved_at: string | null;
+}
+
 export interface ProfileRecord {
   id: string;
   name: string;
@@ -171,6 +184,78 @@ export async function initDatabase(): Promise<void> {
 
 // Database helper functions (Async for Turso / Local LibSQL)
 export const dbRepository = {
+  // Users & Auth
+  async createUser(data: {
+    email: string;
+    name: string;
+    password_hash: string;
+    salt: string;
+    role?: 'admin' | 'member';
+    is_approved?: number;
+    approval_token?: string;
+  }): Promise<UserRecord> {
+    const id = `usr_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
+    await db.execute({
+      sql: `
+        INSERT INTO users (id, email, name, password_hash, salt, role, is_approved, approval_token)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `,
+      args: [
+        id,
+        data.email.toLowerCase().trim(),
+        data.name.trim(),
+        data.password_hash,
+        data.salt,
+        data.role || 'member',
+        data.is_approved || 0,
+        data.approval_token || '',
+      ],
+    });
+
+    const user = await this.getUserById(id);
+    return user!;
+  },
+
+  async getUserByEmail(email: string): Promise<UserRecord | undefined> {
+    const res = await db.execute({
+      sql: 'SELECT * FROM users WHERE LOWER(email) = ?',
+      args: [email.toLowerCase().trim()],
+    });
+    return res.rows[0] as unknown as UserRecord | undefined;
+  },
+
+  async getUserById(id: string): Promise<UserRecord | undefined> {
+    const res = await db.execute({ sql: 'SELECT * FROM users WHERE id = ?', args: [id] });
+    return res.rows[0] as unknown as UserRecord | undefined;
+  },
+
+  async getUserByApprovalToken(token: string): Promise<UserRecord | undefined> {
+    const res = await db.execute({ sql: 'SELECT * FROM users WHERE approval_token = ?', args: [token] });
+    return res.rows[0] as unknown as UserRecord | undefined;
+  },
+
+  async approveUser(id: string): Promise<UserRecord | undefined> {
+    await db.execute({
+      sql: 'UPDATE users SET is_approved = 1, approved_at = CURRENT_TIMESTAMP WHERE id = ?',
+      args: [id],
+    });
+    return this.getUserById(id);
+  },
+
+  async rejectUser(id: string): Promise<void> {
+    await db.execute({ sql: 'DELETE FROM users WHERE id = ?', args: [id] });
+  },
+
+  async getPendingUsers(): Promise<UserRecord[]> {
+    const res = await db.execute('SELECT * FROM users WHERE is_approved = 0 ORDER BY created_at DESC');
+    return res.rows as unknown as UserRecord[];
+  },
+
+  async getAllUsers(): Promise<UserRecord[]> {
+    const res = await db.execute('SELECT id, email, name, role, is_approved, created_at, approved_at FROM users ORDER BY created_at DESC');
+    return res.rows as unknown as UserRecord[];
+  },
+
   // Global Settings
   async getGlobalSettings(): Promise<GlobalSettings> {
     const res = await db.execute('SELECT * FROM global_settings WHERE id = 1');

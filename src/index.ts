@@ -5,7 +5,9 @@ import { fileURLToPath } from 'url';
 import { config } from './config/index.js';
 import { initDatabase, dbRepository } from './db/index.js';
 import { TelegramBotService } from './services/telegram/bot.js';
+import { requireAuth } from './api/middleware/auth.js';
 
+import authRouter from './api/routes/auth.js';
 import profilesRouter from './api/routes/profiles.js';
 import settingsRouter from './api/routes/settings.js';
 import commentsRouter from './api/routes/comments.js';
@@ -22,12 +24,16 @@ app.use(express.urlencoded({ extended: true }));
 const publicDir = path.resolve(process.cwd(), 'public');
 app.use(express.static(publicDir));
 
-app.use('/api/profiles', profilesRouter);
-app.use('/api/settings', settingsRouter);
-app.use('/api/comments', commentsRouter);
+// Public Auth & Webhooks Routes
+app.use('/api/auth', authRouter);
 app.use('/api/webhooks', webhooksRouter);
 
-// Healthcheck endpoint
+// Protected Internal Routes (Requires Auth)
+app.use('/api/profiles', requireAuth, profilesRouter);
+app.use('/api/settings', requireAuth, settingsRouter);
+app.use('/api/comments', requireAuth, commentsRouter);
+
+// Healthcheck endpoint (Public)
 app.get('/api/health', async (req, res) => {
   try {
     const globalSettings = await dbRepository.getGlobalSettings();
@@ -44,6 +50,7 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
+// SPA routing fallback
 app.use((req, res) => {
   if (req.path.startsWith('/api')) {
     return res.status(404).json({ error: 'Endpoint non trovato' });
@@ -51,7 +58,7 @@ app.use((req, res) => {
   res.sendFile(path.join(publicDir, 'index.html'));
 });
 
-// Start Server after DB initialization
+// Start Server
 async function start() {
   await initDatabase();
   console.log('✅ [Database] LibSQL/SQLite inizializzato con successo.');

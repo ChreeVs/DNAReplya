@@ -13,6 +13,20 @@ CREATE TABLE IF NOT EXISTS global_settings (
 
 INSERT OR IGNORE INTO global_settings (id) VALUES (1);
 
+-- Internal Users & Authentication
+CREATE TABLE IF NOT EXISTS users (
+  id TEXT PRIMARY KEY,
+  email TEXT UNIQUE NOT NULL,
+  name TEXT NOT NULL,
+  password_hash TEXT NOT NULL,
+  salt TEXT NOT NULL,
+  role TEXT DEFAULT 'member', -- admin, member
+  is_approved INTEGER DEFAULT 0, -- 1 = approved, 0 = pending
+  approval_token TEXT DEFAULT '',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  approved_at DATETIME DEFAULT NULL
+);
+
 CREATE TABLE IF NOT EXISTS profiles (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,

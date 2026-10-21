@@ -1,6 +1,8 @@
-// DNAReplya Multi-Profile Dashboard Frontend Logic (Carbon & Lime Theme)
+// DNAReplya Multi-Profile Dashboard Frontend Logic (Carbon & Lime Theme + Internal Auth Gate)
 document.addEventListener('DOMContentLoaded', () => {
   // Global State
+  let authToken = localStorage.getItem('dnareplya_token') || '';
+  let currentUser = null;
   let allProfiles = [];
   let activeProfile = null;
   let activeProfileAccounts = [];
@@ -8,6 +10,22 @@ document.addEventListener('DOMContentLoaded', () => {
   let activeProfileMemory = [];
   let activeFilter = 'all';
   let activeModalCommentId = null;
+
+  // DOM Elements - Auth & Session
+  const authGateModal = document.getElementById('authGateModal');
+  const tabAuthLogin = document.getElementById('tabAuthLogin');
+  const tabAuthRegister = document.getElementById('tabAuthRegister');
+  const formLogin = document.getElementById('formLogin');
+  const formRegister = document.getElementById('formRegister');
+  const authAlertBox = document.getElementById('authAlertBox');
+  const navUserName = document.getElementById('navUserName');
+  const btnLogout = document.getElementById('btnLogout');
+  const btnOpenTeamModal = document.getElementById('btnOpenTeamModal');
+  const badgePendingUsers = document.getElementById('badgePendingUsers');
+  const teamModal = document.getElementById('teamModal');
+  const btnCloseTeamModal = document.getElementById('btnCloseTeamModal');
+  const btnCancelTeamModal = document.getElementById('btnCancelTeamModal');
+  const teamList = document.getElementById('teamList');
 
   // DOM Elements - Navigation & Switcher
   const btnProfileDropdown = document.getElementById('btnProfileDropdown');
@@ -45,6 +63,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // DOM Elements - Tab 3: Guardrails
   const profileGuardrailsForm = document.getElementById('profileGuardrailsForm');
+  const profLogoUrl = document.getElementById('profLogoUrl');
+  const profColorPicker = document.getElementById('profColorPicker');
+  const profColorHex = document.getElementById('profColorHex');
+  const profileColorChips = document.querySelectorAll('.color-chip-btn');
   const profToneOfVoice = document.getElementById('profToneOfVoice');
   const profMaxReplyLength = document.getElementById('profMaxReplyLength');
   const charLengthDisplay = document.getElementById('charLengthDisplay');
@@ -111,6 +133,279 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 3200);
   }
 
+  // --- Centralized Authenticated Fetch Wrapper ---
+  async function apiFetch(url, options = {}) {
+    const headers = options.headers || {};
+    if (authToken) {
+      headers['Authorization'] = `Bearer ${authToken}`;
+    }
+    const res = await fetch(url, { ...options, headers });
+
+    if (res.status === 401 && !url.includes('/api/auth/login') && !url.includes('/api/auth/register')) {
+      // Unauthorized: open login gate
+      localStorage.removeItem('dnareplya_token');
+      authToken = '';
+      currentUser = null;
+      openAuthGate('Sessione scaduta o non autorizzata. Effettua il login.', 'error');
+      throw new Error('Unauthorized');
+    }
+
+    return res;
+  }
+
+  // --- 0. Authentication Gate Logic ---
+  function openAuthGate(alertMsg = '', alertType = 'error') {
+    authGateModal.classList.remove('hidden');
+    if (alertMsg) {
+      authAlertBox.className = `auth-alert ${alertType}`;
+      authAlertBox.textContent = alertMsg;
+      authAlertBox.classList.remove('hidden');
+    } else {
+      authAlertBox.classList.add('hidden');
+    }
+  }
+
+  function closeAuthGate() {
+    authGateModal.classList.add('hidden');
+    authAlertBox.classList.add('hidden');
+  }
+
+  tabAuthLogin.addEventListener('click', () => {
+    tabAuthLogin.classList.add('active');
+    tabAuthRegister.classList.remove('active');
+    formLogin.classList.remove('hidden');
+    formRegister.classList.add('hidden');
+    authAlertBox.classList.add('hidden');
+  });
+
+  tabAuthRegister.addEventListener('click', () => {
+    tabAuthRegister.classList.add('active');
+    tabAuthLogin.classList.remove('active');
+    formRegister.classList.remove('hidden');
+    formLogin.classList.add('hidden');
+    authAlertBox.classList.add('hidden');
+  });
+
+  // Login Submit
+  formLogin.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPassword').value;
+
+    const btn = document.getElementById('btnLoginSubmit');
+    btn.disabled = true;
+    btn.textContent = 'Verifica credenziali...';
+
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+
+      if (data.success && data.token) {
+        authToken = data.token;
+        currentUser = data.user;
+        localStorage.setItem('dnareplya_token', authToken);
+        closeAuthGate();
+        formLogin.reset();
+        showToast(`Bentornato, ${currentUser.name}!`, 'success');
+        setupUserSession();
+        initApp();
+      } else {
+        authAlertBox.className = data.pendingApproval ? 'auth-alert pending' : 'auth-alert error';
+        authAlertBox.textContent = data.error || 'Credenziali non valide';
+        authAlertBox.classList.remove('hidden');
+      }
+    } catch (err) {
+      authAlertBox.className = 'auth-alert error';
+      authAlertBox.textContent = 'Errore di connessione al server.';
+      authAlertBox.classList.remove('hidden');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '🔐 Entra nello Strumento';
+    }
+  });
+
+  // Register Submit
+  formRegister.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = document.getElementById('registerName').value.trim();
+    const email = document.getElementById('registerEmail').value.trim();
+    const password = document.getElementById('registerPassword').value;
+
+    const btn = document.getElementById('btnRegisterSubmit');
+    btn.disabled = true;
+    btn.textContent = 'Invio richiesta in corso...';
+
+    try {
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, password }),
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        if (data.token) {
+          // Super admin auto-approved
+          authToken = data.token;
+          currentUser = data.user;
+          localStorage.setItem('dnareplya_token', authToken);
+          closeAuthGate();
+          showToast(`Accesso Super Admin attivato per ${currentUser.name}!`, 'success');
+          setupUserSession();
+          initApp();
+        } else {
+          authAlertBox.className = 'auth-alert pending';
+          authAlertBox.innerHTML = `✅ <b>Richiesta inviata!</b><br>${data.message}`;
+          authAlertBox.classList.remove('hidden');
+          formRegister.reset();
+        }
+      } else {
+        authAlertBox.className = 'auth-alert error';
+        authAlertBox.textContent = data.error || 'Errore durante la registrazione';
+        authAlertBox.classList.remove('hidden');
+      }
+    } catch (err) {
+      authAlertBox.className = 'auth-alert error';
+      authAlertBox.textContent = 'Errore di connessione.';
+      authAlertBox.classList.remove('hidden');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '📨 Invia Richiesta di Registrazione';
+    }
+  });
+
+  // Logout
+  btnLogout.addEventListener('click', () => {
+    localStorage.removeItem('dnareplya_token');
+    authToken = '';
+    currentUser = null;
+    openAuthGate('Disconnessione effettuata.', 'success');
+  });
+
+  // Check Current Session on startup
+  async function checkAuthSession() {
+    if (!authToken) {
+      openAuthGate();
+      return false;
+    }
+
+    try {
+      const res = await apiFetch('/api/auth/me');
+      const data = await res.json();
+      if (data.success && data.user) {
+        currentUser = data.user;
+        setupUserSession();
+        return true;
+      } else {
+        openAuthGate();
+        return false;
+      }
+    } catch (e) {
+      openAuthGate();
+      return false;
+    }
+  }
+
+  function setupUserSession() {
+    if (!currentUser) return;
+    navUserName.textContent = currentUser.name.split(' ')[0] + (currentUser.role === 'admin' ? ' (Admin)' : '');
+
+    // Show Admin Team modal trigger if admin or Christian
+    if (currentUser.role === 'admin' || currentUser.email.toLowerCase().includes('christian.valese')) {
+      btnOpenTeamModal.classList.remove('hidden');
+      loadPendingUsersCount();
+    } else {
+      btnOpenTeamModal.classList.add('hidden');
+    }
+  }
+
+  async function loadPendingUsersCount() {
+    try {
+      const res = await apiFetch('/api/auth/pending-users');
+      const data = await res.json();
+      if (data.success && Array.isArray(data.users)) {
+        badgePendingUsers.textContent = data.users.length;
+        badgePendingUsers.style.display = data.users.length > 0 ? 'inline-block' : 'none';
+      }
+    } catch (e) {}
+  }
+
+  // --- Team Management Modal (Admin) ---
+  btnOpenTeamModal.addEventListener('click', async () => {
+    teamModal.classList.remove('hidden');
+    await renderTeamModal();
+  });
+  btnCloseTeamModal.addEventListener('click', () => teamModal.classList.add('hidden'));
+  btnCancelTeamModal.addEventListener('click', () => teamModal.classList.add('hidden'));
+
+  async function renderTeamModal() {
+    teamList.innerHTML = '<p class="field-hint">Caricamento collaboratori in corso...</p>';
+    try {
+      const res = await apiFetch('/api/auth/pending-users');
+      const data = await res.json();
+      if (!data.success) return;
+
+      const users = data.users;
+      if (!users || users.length === 0) {
+        teamList.innerHTML = `
+          <div class="empty-state">
+            <span class="empty-icon">👥</span>
+            <p>Nessuna richiesta di accesso in attesa.<br>Tutti i collaboratori registrati sono stati approvati.</p>
+          </div>
+        `;
+        return;
+      }
+
+      teamList.innerHTML = users.map(u => `
+        <div class="team-member-card">
+          <div class="member-info">
+            <h4>${escapeHtml(u.name)}</h4>
+            <p>${escapeHtml(u.email)} · Richiesto il ${new Date(u.created_at).toLocaleDateString('it-IT')}</p>
+          </div>
+          <div class="member-actions">
+            <button class="btn btn-primary btn-sm" onclick="window.approveTeamUser('${u.id}')">🟢 Approva</button>
+            <button class="btn btn-ghost btn-sm" onclick="window.rejectTeamUser('${u.id}')">❌ Rifiuta</button>
+          </div>
+        </div>
+      `).join('');
+    } catch (e) {
+      teamList.innerHTML = '<p class="auth-alert error">Errore caricamento richieste team</p>';
+    }
+  }
+
+  window.approveTeamUser = async (userId) => {
+    try {
+      const res = await apiFetch(`/api/auth/approve-user/${userId}`, { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        showToast('✅ Collaboratore approvato con successo!', 'success');
+        renderTeamModal();
+        loadPendingUsersCount();
+      }
+    } catch (e) {
+      showToast('❌ Errore durante l\'approvazione', 'error');
+    }
+  };
+
+  window.rejectTeamUser = async (userId) => {
+    if (!confirm('Rifiutare e rimuovere questa richiesta di registrazione?')) return;
+    try {
+      const res = await apiFetch(`/api/auth/reject-user/${userId}`, { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        showToast('Richiesta rifiutata', 'info');
+        renderTeamModal();
+        loadPendingUsersCount();
+      }
+    } catch (e) {
+      showToast('❌ Errore', 'error');
+    }
+  };
+
   // --- 1. Tab Navigation ---
   navTabs.forEach(tab => {
     tab.addEventListener('click', () => {
@@ -143,7 +438,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function loadProfiles(preferredId = null) {
     try {
-      const res = await fetch('/api/profiles');
+      const res = await apiFetch('/api/profiles');
       const data = await res.json();
       if (!data.success) return;
 
@@ -218,7 +513,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return `
         <div class="profile-dropdown-item ${isActive ? 'active' : ''}" onclick="window.selectProfile('${p.id}')">
           <div class="pitem-left">
-            <span class="pitem-circle">${initials}</span>
+            <span class="pitem-circle" style="color:${p.color || 'var(--lime)'};border-color:${p.color || 'var(--lime)'}">${initials}</span>
             <div>
               <div class="pitem-name">${escapeHtml(p.name)}</div>
               <div class="pitem-count">${p.accountsCount || 0} canali · ${p.pendingCommentsCount || 0} in attesa</div>
@@ -261,7 +556,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!name) return;
 
     try {
-      const res = await fetch('/api/profiles', {
+      const res = await apiFetch('/api/profiles', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, description, tone_of_voice, logo_url, color }),
@@ -284,7 +579,7 @@ document.addEventListener('DOMContentLoaded', () => {
   async function loadActiveProfileChannels() {
     if (!activeProfile) return;
     try {
-      const res = await fetch(`/api/profiles/${activeProfile.id}/accounts`);
+      const res = await apiFetch(`/api/profiles/${activeProfile.id}/accounts`);
       const data = await res.json();
       if (!data.success) return;
 
@@ -338,7 +633,7 @@ document.addEventListener('DOMContentLoaded', () => {
   window.disconnectAccount = async (accId) => {
     if (!confirm('Sei sicuro di voler disconnettere questo account social?')) return;
     try {
-      const res = await fetch(`/api/profiles/${activeProfile.id}/accounts/${accId}`, { method: 'DELETE' });
+      const res = await apiFetch(`/api/profiles/${activeProfile.id}/accounts/${accId}`, { method: 'DELETE' });
       const data = await res.json();
       if (data.success) {
         showToast('Account social rimosso', 'info');
@@ -366,7 +661,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     try {
-      const res = await fetch(`/api/profiles/${activeProfile.id}/accounts`, {
+      const res = await apiFetch(`/api/profiles/${activeProfile.id}/accounts`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -389,7 +684,7 @@ document.addEventListener('DOMContentLoaded', () => {
   async function loadActiveProfileComments() {
     if (!activeProfile) return;
     try {
-      const res = await fetch(`/api/comments?profileId=${activeProfile.id}`);
+      const res = await apiFetch(`/api/comments?profileId=${activeProfile.id}`);
       const data = await res.json();
       if (!data.success) return;
 
@@ -510,8 +805,7 @@ document.addEventListener('DOMContentLoaded', () => {
     submitBtn.textContent = 'Generazione AI in corso...';
 
     try {
-      // Ingest directly via webhook receiver or internal creation
-      const res = await fetch('/api/webhooks/meta', {
+      await fetch('/api/webhooks/meta', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -547,7 +841,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Action Window Bindings
   window.approveComment = async (id) => {
     try {
-      const res = await fetch(`/api/comments/${id}/approve`, { method: 'POST' });
+      const res = await apiFetch(`/api/comments/${id}/approve`, { method: 'POST' });
       const data = await res.json();
       if (data.success) {
         showToast('✅ Risposta approvata e memorizzata nel profilo!', 'success');
@@ -561,7 +855,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   window.rejectComment = async (id) => {
     try {
-      const res = await fetch(`/api/comments/${id}/reject`, { method: 'POST' });
+      const res = await apiFetch(`/api/comments/${id}/reject`, { method: 'POST' });
       const data = await res.json();
       if (data.success) {
         showToast('❌ Commento scartato', 'info');
@@ -592,7 +886,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!customText) return;
 
     try {
-      const res = await fetch(`/api/comments/${activeModalCommentId}/approve`, {
+      const res = await apiFetch(`/api/comments/${activeModalCommentId}/approve`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ final_reply: customText }),
@@ -610,11 +904,6 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // --- 6. Tab 3: Guardrails del Profilo ---
-  const profLogoUrl = document.getElementById('profLogoUrl');
-  const profColorPicker = document.getElementById('profColorPicker');
-  const profColorHex = document.getElementById('profColorHex');
-  const profileColorChips = document.querySelectorAll('.color-chip-btn');
-
   profileColorChips.forEach(chip => {
     chip.addEventListener('click', () => {
       profileColorChips.forEach(c => c.classList.remove('active'));
@@ -675,7 +964,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     try {
-      const res = await fetch(`/api/profiles/${activeProfile.id}`, {
+      const res = await apiFetch(`/api/profiles/${activeProfile.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -695,7 +984,7 @@ document.addEventListener('DOMContentLoaded', () => {
   async function loadActiveProfileMemory() {
     if (!activeProfile) return;
     try {
-      const res = await fetch(`/api/comments/approved-memory?profileId=${activeProfile.id}`);
+      const res = await apiFetch(`/api/comments/approved-memory?profileId=${activeProfile.id}`);
       const data = await res.json();
       if (!data.success) return;
 
@@ -736,7 +1025,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- 8. Tab 5: BYOK & Global Telegram ---
   async function loadGlobalSettings() {
     try {
-      const res = await fetch('/api/settings');
+      const res = await apiFetch('/api/settings');
       const data = await res.json();
       if (!data.success) return;
 
@@ -773,7 +1062,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (keyAnthropic.value) payload.api_key_anthropic = keyAnthropic.value;
 
     try {
-      const res = await fetch('/api/settings', {
+      const res = await apiFetch('/api/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -797,7 +1086,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (globalTelegramToken.value) payload.global_telegram_bot_token = globalTelegramToken.value;
 
     try {
-      const res = await fetch('/api/settings', {
+      const res = await apiFetch('/api/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -816,7 +1105,7 @@ document.addEventListener('DOMContentLoaded', () => {
   btnTestGlobalTelegram.addEventListener('click', async () => {
     btnTestGlobalTelegram.textContent = 'Invio in corso...';
     try {
-      const res = await fetch('/api/settings/test-telegram', {
+      const res = await apiFetch('/api/settings/test-telegram', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -843,12 +1132,21 @@ document.addEventListener('DOMContentLoaded', () => {
       .replace(/>/g, '&gt;');
   }
 
-  // Initial Load
-  loadProfiles();
-  loadGlobalSettings();
+  // --- Initial App Bootstrapping ---
+  async function initApp() {
+    await loadProfiles();
+    await loadGlobalSettings();
+  }
 
-  // Periodic inbox refresh every 10s
+  checkAuthSession().then(authenticated => {
+    if (authenticated) {
+      initApp();
+    }
+  });
+
+  // Periodic inbox refresh every 10s if logged in
   setInterval(() => {
+    if (!authToken) return;
     const activeTab = document.querySelector('.nav-tab.active');
     if (activeTab && activeTab.dataset.tab === 'tab-inbox') {
       loadActiveProfileComments();

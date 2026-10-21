@@ -58,6 +58,18 @@
       <button class="nav-tab" data-tab="tab-byok" id="tabBtnBYOK">
         <span class="tab-icon">🔑</span> Chiavi LLM (BYOK)
       </button>
+
+      <!-- User Session Area -->
+      <div class="user-session-wrapper" id="userSessionWrapper">
+        <button class="btn-team-admin hidden" id="btnOpenTeamModal" title="Richieste Approvazione Team">
+          👥 Team <span class="badge-pending" id="badgePendingUsers">0</span>
+        </button>
+        <div class="user-profile-badge">
+          <span class="user-avatar-dot"></span>
+          <span class="user-name" id="navUserName">Utente</span>
+        </div>
+        <button class="btn-logout" id="btnLogout" title="Disconnetti">🚪</button>
+      </div>
     </nav>
   </header>
 
@@ -545,6 +557,84 @@
       <div class="modal-footer">
         <button class="btn btn-ghost" id="btnModalCancel">Annulla</button>
         <button class="btn btn-primary" id="btnModalSubmit">✅ Approva & Memorizza</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- AUTHENTICATION GATE MODAL (LOGIN / REGISTER) -->
+  <div id="authGateModal" class="modal-overlay hidden">
+    <div class="auth-card">
+      <div class="auth-header">
+        <span class="auth-logo">🧬</span>
+        <h2>DNAReplya</h2>
+        <p class="auth-sub">Accesso Riservato ad Uso Interno · DNA Creative Agency</p>
+      </div>
+
+      <!-- Auth Tabs -->
+      <div class="auth-tabs">
+        <button class="auth-tab-btn active" id="tabAuthLogin">Accedi</button>
+        <button class="auth-tab-btn" id="tabAuthRegister">Richiedi Accesso</button>
+      </div>
+
+      <!-- Alert Box -->
+      <div id="authAlertBox" class="auth-alert hidden"></div>
+
+      <!-- LOGIN FORM -->
+      <form id="formLogin" class="auth-body">
+        <div class="form-group">
+          <label for="loginEmail">Email Aziendale</label>
+          <input type="email" id="loginEmail" placeholder="nome@dnacreativeagecy.it" required>
+        </div>
+        <div class="form-group">
+          <label for="loginPassword">Password</label>
+          <input type="password" id="loginPassword" placeholder="••••••••" required>
+        </div>
+        <button type="submit" class="btn btn-primary w-full mt-3" id="btnLoginSubmit">
+          🔐 Entra nello Strumento
+        </button>
+      </form>
+
+      <!-- REGISTER FORM -->
+      <form id="formRegister" class="auth-body hidden">
+        <div class="info-alert-lime" style="font-size:0.78rem;margin-bottom:1rem;padding:0.75rem 1rem;">
+          🔒 <b>Approvazione Richiesta:</b><br>
+          La registrazione verrà inviata a <b>christian.valese@dnacreativeagecy.it</b>. Potrai accedere solo dopo la sua conferma via email o Telegram.
+        </div>
+        <div class="form-group">
+          <label for="registerName">Nome Completo</label>
+          <input type="text" id="registerName" placeholder="es. Mario Rossi" required>
+        </div>
+        <div class="form-group">
+          <label for="registerEmail">Email</label>
+          <input type="email" id="registerEmail" placeholder="mario@dnacreativeagecy.it" required>
+        </div>
+        <div class="form-group">
+          <label for="registerPassword">Password (min. 6 caratteri)</label>
+          <input type="password" id="registerPassword" minlength="6" placeholder="Crea una password sicura" required>
+        </div>
+        <button type="submit" class="btn btn-primary w-full mt-3" id="btnRegisterSubmit">
+          📨 Invia Richiesta di Registrazione
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- TEAM MANAGEMENT MODAL (ADMIN ONLY) -->
+  <div id="teamModal" class="modal-overlay hidden">
+    <div class="modal-card max-w-4xl">
+      <div class="modal-header">
+        <h3>👥 Gestione Team & Richieste di Accesso</h3>
+        <button class="modal-close" id="btnCloseTeamModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="panel-desc mb-6">In qualità di amministratore, qui puoi approvare o revocare l'accesso ai collaboratori che si sono registrati per usare le tue chiavi LLM.</p>
+        
+        <div class="team-list" id="teamList">
+          <!-- Dynamic team members -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="btnCancelTeamModal">Chiudi</button>
       </div>
     </div>
   </div>
