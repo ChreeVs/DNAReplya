@@ -22,6 +22,9 @@ export class EmailNotificationService {
         tls: {
           rejectUnauthorized: false,
         },
+        connectionTimeout: 4000,
+        greetingTimeout: 4000,
+        socketTimeout: 4000,
       });
       return this.transporter;
     } else {
@@ -54,7 +57,57 @@ export class EmailNotificationService {
 ╚══════════════════════════════════════════════════════════════════════════════╝
     `);
 
-    // 1. Try sending real email if SMTP is configured
+    const emailHtml = `
+      <div style="font-family: sans-serif; background: #0f1217; color: #f8fafc; padding: 24px; border-radius: 12px; max-width: 580px;">
+        <h2 style="color: #a3e635; margin-top: 0;">🧬 DNAReplya - Richiesta di Accesso Interno</h2>
+        <p>Un nuovo utente si è registrato e richiede l'approvazione per accedere allo strumento interno:</p>
+        <div style="background: rgba(255,255,255,0.05); padding: 16px; border-radius: 8px; margin: 16px 0;">
+          <p style="margin: 4px 0;"><strong>Nome:</strong> ${data.name}</p>
+          <p style="margin: 4px 0;"><strong>Email:</strong> ${data.email}</p>
+          <p style="margin: 4px 0;"><strong>Data:</strong> ${new Date().toLocaleString('it-IT')}</p>
+        </div>
+        <p>Clicca sul pulsante qui sotto per approvare l'accesso e abilitare l'utente:</p>
+        <div style="margin: 24px 0;">
+          <a href="${approveUrl}" style="background: #a3e635; color: #000; padding: 12px 24px; text-decoration: none; font-weight: bold; border-radius: 6px; display: inline-block;">
+            ✅ Approva Utente
+          </a>
+          <a href="${rejectUrl}" style="background: rgba(255,255,255,0.1); color: #f43f5e; padding: 12px 20px; text-decoration: none; font-weight: bold; border-radius: 6px; display: inline-block; margin-left: 12px;">
+            ❌ Rifiuta
+          </a>
+        </div>
+        <p style="font-size: 12px; color: #94a3b8;">Questo link è strettamente riservato all'amministratore Christian Valese.</p>
+      </div>
+    `;
+
+    // 0. Try sending via Resend HTTPS API (Port 443, never blocked by Render)
+    if (process.env.RESEND_API_KEY) {
+      try {
+        const resendFrom = process.env.RESEND_FROM || 'DNAReplya <onboarding@resend.dev>';
+        const rRes = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            from: resendFrom,
+            to: [adminEmail],
+            subject: `🔔 Nuova Richiesta Accesso DNAReplya: ${data.name} (${data.email})`,
+            html: emailHtml,
+          }),
+        });
+        if (rRes.ok) {
+          console.log(`[Email via Resend HTTPS] Notifica inviata con successo a ${adminEmail}`);
+          return;
+        } else {
+          console.warn(`[Email via Resend] Errore API:`, await rRes.text());
+        }
+      } catch (rErr: any) {
+        console.error(`[Email via Resend] Errore chiamata HTTPS:`, rErr.message);
+      }
+    }
+
+    // 1. Try sending real email via SMTP
     const transporter = this.getTransporter();
     if (transporter) {
       try {
@@ -63,31 +116,11 @@ export class EmailNotificationService {
           from: fromAddress,
           to: adminEmail,
           subject: `🔔 Nuova Richiesta Accesso DNAReplya: ${data.name} (${data.email})`,
-          html: `
-            <div style="font-family: sans-serif; background: #0f1217; color: #f8fafc; padding: 24px; border-radius: 12px; max-width: 580px;">
-              <h2 style="color: #a3e635; margin-top: 0;">🧬 DNAReplya - Richiesta di Accesso Interno</h2>
-              <p>Un nuovo utente si è registrato e richiede l'approvazione per accedere allo strumento interno:</p>
-              <div style="background: rgba(255,255,255,0.05); padding: 16px; border-radius: 8px; margin: 16px 0;">
-                <p style="margin: 4px 0;"><strong>Nome:</strong> ${data.name}</p>
-                <p style="margin: 4px 0;"><strong>Email:</strong> ${data.email}</p>
-                <p style="margin: 4px 0;"><strong>Data:</strong> ${new Date().toLocaleString('it-IT')}</p>
-              </div>
-              <p>Clicca sul pulsante qui sotto per approvare l'accesso e abilitare l'utente:</p>
-              <div style="margin: 24px 0;">
-                <a href="${approveUrl}" style="background: #a3e635; color: #000; padding: 12px 24px; text-decoration: none; font-weight: bold; border-radius: 6px; display: inline-block;">
-                  ✅ Approva Utente
-                </a>
-                <a href="${rejectUrl}" style="background: rgba(255,255,255,0.1); color: #f43f5e; padding: 12px 20px; text-decoration: none; font-weight: bold; border-radius: 6px; display: inline-block; margin-left: 12px;">
-                  ❌ Rifiuta
-                </a>
-              </div>
-              <p style="font-size: 12px; color: #94a3b8;">Questo link è strettamente riservato all'amministratore Christian Valese.</p>
-            </div>
-          `,
+          html: emailHtml,
         });
         console.log(`[Email] Notifica inviata con successo a ${adminEmail}`);
       } catch (err: any) {
-        console.error(`[Email] Impossibile inviare email SMTP:`, err.message);
+        console.error(`[Email SMTP Warning] Impossibile inviare email SMTP (${err.message}). Nota: se sei su Render Free, le porte SMTP (465/587) sono bloccate dal provider.`);
       }
     }
 
