@@ -370,7 +370,6 @@ ${profile?.forbidden_words ? `TERMINI O ARGOMENTI VIETATI (NON USARLI MAI):\n${p
               { role: 'system', content: systemPrompt },
               { role: 'user', content: userPrompt },
             ],
-            temperature: 0.7,
           }),
         });
         if (res.ok) {
@@ -413,13 +412,13 @@ ${profile?.forbidden_words ? `TERMINI O ARGOMENTI VIETATI (NON USARLI MAI):\n${p
           max_tokens: 600,
           system: systemPrompt,
           messages: [{ role: 'user', content: userPrompt }],
-          temperature: 0.7,
         }),
       });
 
       if (res.ok) {
         const data = await res.json() as any;
-        return data.content?.[0]?.text || '';
+        const textBlock = data.content?.find((c: any) => c.type === 'text');
+        return textBlock?.text || data.content?.[0]?.text || '';
       }
 
       const errText = await res.text();
