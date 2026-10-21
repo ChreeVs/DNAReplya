@@ -127,6 +127,24 @@
           </div>
         </div>
 
+        <!-- Channel Filter Subbar & Live Sync -->
+        <div class="inbox-subbar">
+          <div class="channel-filter-group" id="channelFilterGroup">
+            <button class="chan-filter-chip active" data-chan="all">🌐 Tutti i Canali</button>
+            <button class="chan-filter-chip" data-chan="facebook">📘 Facebook</button>
+            <button class="chan-filter-chip" data-chan="instagram">📸 Instagram</button>
+            <button class="chan-filter-chip" data-chan="threads">🧵 Threads</button>
+            <button class="chan-filter-chip" data-chan="tiktok">🎵 TikTok</button>
+            <button class="chan-filter-chip" data-chan="linkedin">💼 LinkedIn</button>
+            <button class="chan-filter-chip" data-chan="x">🐦 X</button>
+          </div>
+          <div class="inbox-subbar-actions">
+            <button class="btn btn-secondary btn-sm" id="btnSyncLiveComments" title="Controlla subito Facebook e Instagram per nuovi commenti">
+              ⚡ Sincronizza Live
+            </button>
+          </div>
+        </div>
+
         <div class="feed-list" id="feedList">
           <div class="empty-state">
             <span class="empty-icon">📭</span>
@@ -640,6 +658,47 @@
         <button type="submit" class="btn btn-primary w-full mt-3" id="btnRegisterSubmit">
           📨 Invia Richiesta di Registrazione
         </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: SELEZIONA CANALI META PER IL PROFILO CLIENTE -->
+  <div id="selectMetaChannelsModal" class="modal-overlay hidden">
+    <div class="modal-card max-w-2xl">
+      <div class="modal-header">
+        <div>
+          <h3>🎯 Scegli Canali per il Profilo</h3>
+          <p class="panel-desc mt-1" id="selectMetaTargetProfile">Profilo cliente: <b>...</b></p>
+        </div>
+        <button class="modal-close" id="btnCloseSelectMetaModal">&times;</button>
+      </div>
+      <form id="selectMetaChannelsForm" class="modal-body">
+        <p class="field-hint mb-4" style="line-height: 1.45;">
+          Meta ha rilevato i canali di cui sei amministratore. Seleziona <b>la singola pagina Facebook</b> e/o <b>il profilo Instagram</b> dedicati a questo specifico cliente:
+        </p>
+
+        <!-- SEZIONE PAGINE FACEBOOK -->
+        <div class="mb-5">
+          <h4 class="section-title-sm mb-3">📘 Pagina Facebook (Seleziona 1):</h4>
+          <div class="channel-radio-list" id="listFacebookPages">
+            <!-- Dynamic radio cards -->
+          </div>
+        </div>
+
+        <!-- SEZIONE ACCOUNT INSTAGRAM -->
+        <div class="mb-5">
+          <h4 class="section-title-sm mb-3">📸 Profilo Instagram (Seleziona 1):</h4>
+          <div class="channel-radio-list" id="listInstagramAccounts">
+            <!-- Dynamic radio cards -->
+          </div>
+        </div>
+
+        <div class="modal-footer" style="padding: 1rem 0 0 0;">
+          <button type="button" class="btn btn-ghost" id="btnCancelSelectMetaModal">Annulla</button>
+          <button type="submit" class="btn btn-primary" id="btnSubmitSelectMeta">
+            💾 Collega Canali Selezionati
+          </button>
+        </div>
       </form>
     </div>
   </div>

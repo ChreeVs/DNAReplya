@@ -443,6 +443,14 @@ export const dbRepository = {
     return res.rows[0] as unknown as CommentRecord | undefined;
   },
 
+  async findCommentByPlatformCommentId(platformCommentId: string): Promise<CommentRecord | undefined> {
+    const res = await db.execute({
+      sql: 'SELECT * FROM comments WHERE platform_comment_id = ? LIMIT 1',
+      args: [platformCommentId],
+    });
+    return res.rows[0] as unknown as CommentRecord | undefined;
+  },
+
   async insertComment(comment: Partial<CommentRecord> & { profile_id: string; comment_text: string }): Promise<CommentRecord> {
     const id = comment.id || `comm_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
     await db.execute({

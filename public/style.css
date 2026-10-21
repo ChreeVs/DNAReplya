@@ -506,6 +506,115 @@ body {
   font-weight: 700;
 }
 
+/* Channel Filters in Inbox */
+.inbox-subbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.85rem 1.5rem;
+  background: rgba(0, 0, 0, 0.22);
+  border-bottom: 1px solid var(--border-subtle);
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.channel-filter-group {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.chan-filter-chip {
+  padding: 0.35rem 0.8rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.chan-filter-chip:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  border-color: var(--border-medium);
+}
+
+.chan-filter-chip.active {
+  background: var(--lime-subtle);
+  color: var(--lime);
+  border-color: var(--lime);
+  font-weight: 700;
+  box-shadow: 0 0 12px var(--lime-glow);
+}
+
+/* Modal Channel Selection Radios */
+.channel-radio-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 220px;
+  overflow-y: auto;
+  padding-right: 0.35rem;
+}
+
+.channel-radio-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-subtle);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.channel-radio-card:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--border-medium);
+}
+
+.channel-radio-card.selected {
+  border-color: var(--lime);
+  background: var(--lime-subtle);
+}
+
+.channel-radio-label {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  width: 100%;
+}
+
+.channel-radio-label input[type="radio"] {
+  accent-color: var(--lime);
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.channel-item-meta {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  margin-left: auto;
+}
+
+.section-title-sm {
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: #fff;
+}
+
 /* Forms & Inputs */
 .form-group {
   margin-bottom: 1.35rem;

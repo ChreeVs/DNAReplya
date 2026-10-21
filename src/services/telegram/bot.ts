@@ -1,5 +1,6 @@
 import { dbRepository, CommentRecord } from '../../db/index.js';
 import { AIOrchestrator } from '../ai/orchestrator.js';
+import { MetaPublisherService } from '../social/metaPublisher.js';
 
 export class TelegramBotService {
   private static isPolling = false;
@@ -170,6 +171,9 @@ ${comment.post_snippet ? `📌 <b>Post:</b> <i>"${this.escapeHtml(comment.post_s
       }
 
       if (action === 'appr') {
+        // Publish to Facebook/Instagram
+        await MetaPublisherService.publishReply(comment.id, comment.proposed_reply);
+
         await dbRepository.updateComment(comment.id, {
           status: 'approved',
           final_reply: comment.proposed_reply,

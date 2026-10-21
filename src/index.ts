@@ -7,6 +7,9 @@ import { initDatabase, dbRepository } from './db/index.js';
 import { TelegramBotService } from './services/telegram/bot.js';
 import { requireAuth } from './api/middleware/auth.js';
 
+import { SchedulerService } from './services/scheduler/index.js';
+import { MetaSyncService } from './services/social/metaSync.js';
+
 import authRouter from './api/routes/auth.js';
 import profilesRouter from './api/routes/profiles.js';
 import settingsRouter from './api/routes/settings.js';
@@ -25,10 +28,21 @@ app.use(express.urlencoded({ extended: true }));
 const publicDir = path.resolve(process.cwd(), 'public');
 app.use(express.static(publicDir));
 
-// Public Auth & Webhooks Routes
+// Public Auth, Webhooks & Cron Routes
 app.use('/api/auth', authRouter);
 app.use('/api/auth', metaOAuthRouter);
 app.use('/api/webhooks', webhooksRouter);
+
+// Public 3-Hour External Cron / Keep-Alive trigger
+app.get('/api/cron/check-comments', async (req, res) => {
+  try {
+    console.log('[External Cron] Trigger ricevuto per /api/cron/check-comments');
+    const result = await MetaSyncService.syncAllProfilesComments();
+    res.json({ success: true, timestamp: new Date().toISOString(), ...result });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
 
 // Protected Internal Routes (Requires Auth)
 app.use('/api/profiles', requireAuth, profilesRouter);
@@ -78,11 +92,13 @@ async function start() {
     `);
 
     TelegramBotService.startPolling();
+    SchedulerService.start();
   });
 
   process.on('SIGINT', () => {
     console.log('\nArresto in corso...');
     TelegramBotService.stopPolling();
+    SchedulerService.stop();
     server.close(() => {
       console.log('Server chiuso.');
       process.exit(0);

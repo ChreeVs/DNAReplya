@@ -9,7 +9,9 @@ document.addEventListener('DOMContentLoaded', () => {
   let activeProfileComments = [];
   let activeProfileMemory = [];
   let activeFilter = 'all';
+  let activeChannelFilter = 'all';
   let activeModalCommentId = null;
+  let currentOAuthSessionId = null;
 
   // DOM Elements - Auth & Session
   const authGateModal = document.getElementById('authGateModal');
@@ -55,6 +57,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const feedList = document.getElementById('feedList');
   const btnRefreshFeed = document.getElementById('btnRefreshFeed');
   const filterChips = document.querySelectorAll('.filter-chip');
+  const chanFilterChips = document.querySelectorAll('.chan-filter-chip');
+  const btnSyncLiveComments = document.getElementById('btnSyncLiveComments');
   const btnOpenIngestModal = document.getElementById('btnOpenIngestModal');
 
   // DOM Elements - Tab 2: Channels
@@ -62,6 +66,15 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnOpenConnectModal = document.getElementById('btnOpenConnectModal');
   const btnConnectFacebook = document.getElementById('btnConnectFacebook');
   const btnConnectFacebookModal = document.getElementById('btnConnectFacebookModal');
+
+  // DOM Elements - Meta Selection Modal
+  const selectMetaChannelsModal = document.getElementById('selectMetaChannelsModal');
+  const selectMetaChannelsForm = document.getElementById('selectMetaChannelsForm');
+  const btnCloseSelectMetaModal = document.getElementById('btnCloseSelectMetaModal');
+  const btnCancelSelectMetaModal = document.getElementById('btnCancelSelectMetaModal');
+  const listFacebookPages = document.getElementById('listFacebookPages');
+  const listInstagramAccounts = document.getElementById('listInstagramAccounts');
+  const selectMetaTargetProfile = document.getElementById('selectMetaTargetProfile');
 
   // DOM Elements - Tab 3: Guardrails
   const profileGuardrailsForm = document.getElementById('profileGuardrailsForm');
@@ -741,6 +754,138 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // --- Meta Channel Selection Modal (Single Facebook Page & Instagram Profile) ---
+  async function openSelectMetaModal(sessionId) {
+    currentOAuthSessionId = sessionId;
+    try {
+      const res = await apiFetch(`/api/auth/facebook/session?sessionId=${sessionId}`);
+      const data = await res.json();
+      if (!data.success) {
+        showToast(`❌ ${data.error}`, 'error');
+        return;
+      }
+
+      selectMetaTargetProfile.innerHTML = `Profilo cliente: <b>${escapeHtml(data.profileName)}</b>`;
+
+      // 1. Render Facebook Pages Radios
+      if (!data.pages || data.pages.length === 0) {
+        listFacebookPages.innerHTML = '<p class="field-hint">Nessuna pagina Facebook trovata per questo account.</p>';
+      } else {
+        let pagesHtml = data.pages.map((p, index) => `
+          <div class="channel-radio-card ${index === 0 ? 'selected' : ''}">
+            <label class="channel-radio-label">
+              <input type="radio" name="selectedFacebookPage" value="${p.id}" ${index === 0 ? 'checked' : ''}>
+              <span>📘 ${escapeHtml(p.name)}</span>
+              <span class="channel-item-meta">${p.category ? escapeHtml(p.category) : 'Pagina'} (ID: ${p.id})</span>
+            </label>
+          </div>
+        `).join('');
+
+        pagesHtml += `
+          <div class="channel-radio-card">
+            <label class="channel-radio-label">
+              <input type="radio" name="selectedFacebookPage" value="none">
+              <span style="color: var(--text-muted);">🚫 Non collegare alcuna pagina Facebook</span>
+            </label>
+          </div>
+        `;
+        listFacebookPages.innerHTML = pagesHtml;
+      }
+
+      // 2. Render Instagram Accounts Radios
+      const igPages = data.pages.filter(p => p.hasInstagram && p.instagram);
+      if (igPages.length === 0) {
+        listInstagramAccounts.innerHTML = '<p class="field-hint">Nessun account Instagram Business associato alle tue pagine Facebook.</p>';
+      } else {
+        let igHtml = igPages.map((p, index) => `
+          <div class="channel-radio-card ${index === 0 ? 'selected' : ''}">
+            <label class="channel-radio-label">
+              <input type="radio" name="selectedInstagram" value="${p.instagram.id}" ${index === 0 ? 'checked' : ''}>
+              <span>📸 @${escapeHtml(p.instagram.username || p.instagram.name)}</span>
+              <span class="channel-item-meta">Collegato a: ${escapeHtml(p.name)}</span>
+            </label>
+          </div>
+        `).join('');
+
+        igHtml += `
+          <div class="channel-radio-card">
+            <label class="channel-radio-label">
+              <input type="radio" name="selectedInstagram" value="none">
+              <span style="color: var(--text-muted);">🚫 Non collegare alcun profilo Instagram</span>
+            </label>
+          </div>
+        `;
+        listInstagramAccounts.innerHTML = igHtml;
+      }
+
+      // Radio card click highlight
+      document.querySelectorAll('#listFacebookPages .channel-radio-card, #listInstagramAccounts .channel-radio-card').forEach(card => {
+        card.addEventListener('click', () => {
+          const radio = card.querySelector('input[type="radio"]');
+          if (radio) {
+            radio.checked = true;
+            const container = card.closest('.channel-radio-list');
+            container.querySelectorAll('.channel-radio-card').forEach(c => c.classList.remove('selected'));
+            card.classList.add('selected');
+          }
+        });
+      });
+
+      selectMetaChannelsModal.classList.remove('hidden');
+    } catch (err) {
+      showToast('❌ Errore caricamento canali Meta', 'error');
+    }
+  }
+
+  if (btnCloseSelectMetaModal) btnCloseSelectMetaModal.addEventListener('click', () => selectMetaChannelsModal.classList.add('hidden'));
+  if (btnCancelSelectMetaModal) btnCancelSelectMetaModal.addEventListener('click', () => selectMetaChannelsModal.classList.add('hidden'));
+
+  if (selectMetaChannelsForm) {
+    selectMetaChannelsForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!currentOAuthSessionId) return;
+
+      const selectedFb = document.querySelector('input[name="selectedFacebookPage"]:checked')?.value || 'none';
+      const selectedIg = document.querySelector('input[name="selectedInstagram"]:checked')?.value || 'none';
+
+      const submitBtn = document.getElementById('btnSubmitSelectMeta');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Salvataggio in corso...';
+
+      try {
+        const res = await apiFetch('/api/auth/facebook/select', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId: currentOAuthSessionId,
+            selectedFacebookPageId: selectedFb,
+            selectedInstagramId: selectedIg,
+          }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast(`🎉 ${data.message}`, 'success');
+          selectMetaChannelsModal.classList.add('hidden');
+          currentOAuthSessionId = null;
+
+          if (data.profileId) {
+            selectProfile(data.profileId);
+          }
+          const channelsNavBtn = document.querySelector('.nav-tab[data-tab="tab-channels"]');
+          if (channelsNavBtn) channelsNavBtn.click();
+          loadActiveProfileChannels();
+        } else {
+          showToast(`❌ ${data.error}`, 'error');
+        }
+      } catch (err) {
+        showToast('❌ Errore durante il salvataggio dei canali', 'error');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = '💾 Collega Canali Selezionati';
+      }
+    });
+  }
+
   // --- 5. Tab 1: Inbox Commenti ---
   async function loadActiveProfileComments() {
     if (!activeProfile) return;
@@ -758,9 +903,23 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function filterComments(comments) {
-    if (activeFilter === 'pending') return comments.filter(c => c.status === 'pending');
-    if (activeFilter === 'approved') return comments.filter(c => c.status === 'approved' || c.status === 'modified' || c.status === 'auto_replied');
-    return comments;
+    return (comments || []).filter(c => {
+      // 1. Status Filter
+      let statusMatch = true;
+      if (activeFilter === 'pending') {
+        statusMatch = c.status === 'pending';
+      } else if (activeFilter === 'approved') {
+        statusMatch = (c.status === 'approved' || c.status === 'modified' || c.status === 'auto_replied');
+      }
+
+      // 2. Channel / Platform Filter
+      let channelMatch = true;
+      if (activeChannelFilter !== 'all') {
+        channelMatch = (c.platform && c.platform.toLowerCase() === activeChannelFilter.toLowerCase());
+      }
+
+      return statusMatch && channelMatch;
+    });
   }
 
   function updateCommentsMetrics() {
@@ -841,6 +1000,41 @@ document.addEventListener('DOMContentLoaded', () => {
       renderFeed(filterComments(activeProfileComments));
     });
   });
+
+  chanFilterChips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      chanFilterChips.forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      activeChannelFilter = chip.dataset.chan;
+      renderFeed(filterComments(activeProfileComments));
+    });
+  });
+
+  if (btnSyncLiveComments) {
+    btnSyncLiveComments.addEventListener('click', async () => {
+      if (!activeProfile) {
+        showToast('Seleziona prima un profilo cliente', 'error');
+        return;
+      }
+      btnSyncLiveComments.disabled = true;
+      btnSyncLiveComments.textContent = '⏳ Sincronizzazione...';
+      try {
+        const res = await apiFetch(`/api/comments/sync?profileId=${activeProfile.id}`, { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+          showToast(`✅ ${data.message}`, 'success');
+          await loadActiveProfileComments();
+        } else {
+          showToast(`❌ Errore: ${data.error}`, 'error');
+        }
+      } catch (err) {
+        showToast('❌ Errore durante la sincronizzazione live', 'error');
+      } finally {
+        btnSyncLiveComments.disabled = false;
+        btnSyncLiveComments.textContent = '⚡ Sincronizza Live';
+      }
+    });
+  }
 
   btnRefreshFeed.addEventListener('click', loadActiveProfileComments);
 
@@ -1202,17 +1396,19 @@ document.addEventListener('DOMContentLoaded', () => {
     await loadProfiles();
     await loadGlobalSettings();
 
-    // Check if returning from Facebook OAuth
+    // Check if returning from Facebook OAuth with a selection session
     const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('fb_connected') === 'success') {
+    const fbSelectSession = urlParams.get('fb_select_session');
+    if (fbSelectSession) {
+      window.history.replaceState({}, document.title, window.location.pathname);
+      openSelectMetaModal(fbSelectSession);
+    } else if (urlParams.get('fb_connected') === 'success') {
       const count = urlParams.get('count') || '0';
       showToast(`🎉 Connessione Meta riuscita! ${count} canali collegati con successo.`, 'success');
-      // If we saved an active profile, re-select it
       const savedProfileId = localStorage.getItem('dnareplya_oauth_profile');
       if (savedProfileId && profiles.some(p => p.id === savedProfileId)) {
         selectProfile(savedProfileId);
       }
-      // Switch to channels tab
       const channelsNavBtn = document.querySelector('.nav-tab[data-tab="tab-channels"]');
       if (channelsNavBtn) channelsNavBtn.click();
       window.history.replaceState({}, document.title, window.location.pathname);
