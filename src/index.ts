@@ -27,7 +27,14 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 const publicDir = path.resolve(process.cwd(), 'public');
-app.use(express.static(publicDir));
+app.use(express.static(publicDir, {
+  etag: true,
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.html')) {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    }
+  },
+}));
 
 // Public Auth, Webhooks & Cron Routes
 app.use('/api/auth', authRouter);
