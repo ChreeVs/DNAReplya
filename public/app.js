@@ -15,6 +15,8 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentOAuthSessionId = null;
   let selectedCommentIds = new Set();
   let activeDateFilter = 'all';
+  let customDateFrom = '';
+  let customDateTo = '';
   let activeDateSort = 'desc';
   let activeSearchQuery = '';
 
@@ -66,6 +68,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnSyncLiveComments = document.getElementById('btnSyncLiveComments');
   const btnOpenIngestModal = document.getElementById('btnOpenIngestModal');
   const inboxDateFilter = document.getElementById('inboxDateFilter');
+  const customDateRangeBox = document.getElementById('customDateRangeBox');
+  const inboxDateFrom = document.getElementById('inboxDateFrom');
+  const inboxDateTo = document.getElementById('inboxDateTo');
+  const btnClearCustomDates = document.getElementById('btnClearCustomDates');
   const inboxDateSort = document.getElementById('inboxDateSort');
   const inboxSearchInput = document.getElementById('inboxSearchInput');
   const inboxCounterSummary = document.getElementById('inboxCounterSummary');
@@ -1458,6 +1464,15 @@ document.addEventListener('DOMContentLoaded', () => {
           dateMatch = cTime >= (now.getTime() - 7 * 86400000);
         } else if (activeDateFilter === '30days') {
           dateMatch = cTime >= (now.getTime() - 30 * 86400000);
+        } else if (activeDateFilter === 'custom') {
+          if (customDateFrom) {
+            const fromTime = new Date(`${customDateFrom}T00:00:00`).getTime();
+            if (cTime < fromTime) dateMatch = false;
+          }
+          if (customDateTo) {
+            const toTime = new Date(`${customDateTo}T23:59:59.999`).getTime();
+            if (cTime > toTime) dateMatch = false;
+          }
         }
       }
 
@@ -1755,6 +1770,35 @@ document.addEventListener('DOMContentLoaded', () => {
   if (inboxDateFilter) {
     inboxDateFilter.addEventListener('change', (e) => {
       activeDateFilter = e.target.value;
+      if (activeDateFilter === 'custom') {
+        if (customDateRangeBox) customDateRangeBox.classList.remove('hidden');
+      } else {
+        if (customDateRangeBox) customDateRangeBox.classList.add('hidden');
+      }
+      renderFeed(filterComments(activeProfileComments));
+    });
+  }
+
+  if (inboxDateFrom) {
+    inboxDateFrom.addEventListener('change', (e) => {
+      customDateFrom = e.target.value;
+      renderFeed(filterComments(activeProfileComments));
+    });
+  }
+
+  if (inboxDateTo) {
+    inboxDateTo.addEventListener('change', (e) => {
+      customDateTo = e.target.value;
+      renderFeed(filterComments(activeProfileComments));
+    });
+  }
+
+  if (btnClearCustomDates) {
+    btnClearCustomDates.addEventListener('click', () => {
+      customDateFrom = '';
+      customDateTo = '';
+      if (inboxDateFrom) inboxDateFrom.value = '';
+      if (inboxDateTo) inboxDateTo.value = '';
       renderFeed(filterComments(activeProfileComments));
     });
   }

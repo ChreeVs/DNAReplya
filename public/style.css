@@ -2697,6 +2697,71 @@ input:checked + .toggle-slider:before {
   height: 34px;
 }
 
+/* Custom Date Range Picker Container */
+.custom-date-range-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: var(--bg-deep);
+  border: 1px solid var(--border-medium);
+  border-radius: 8px;
+  padding: 0.2rem 0.65rem;
+  height: 34px;
+  animation: fadeIn 0.2s ease;
+  transition: border-color 0.2s ease;
+}
+
+.custom-date-range-box:focus-within {
+  border-color: var(--lime);
+  box-shadow: 0 0 10px rgba(163, 230, 53, 0.2);
+}
+
+.custom-date-range-box.hidden {
+  display: none !important;
+}
+
+.range-sep {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--lime);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.inbox-date-input {
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-family: inherit;
+  font-size: 0.78rem;
+  padding: 0.2rem 0.25rem;
+  outline: none;
+  cursor: pointer;
+  color-scheme: dark;
+}
+
+.inbox-date-input::-webkit-calendar-picker-indicator {
+  filter: invert(0.85);
+  cursor: pointer;
+}
+
+.btn-clear-date {
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 0.8rem;
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  line-height: 1;
+  transition: all 0.15s ease;
+}
+
+.btn-clear-date:hover {
+  color: var(--accent-rose);
+  background: rgba(244, 63, 94, 0.15);
+}
+
 .inbox-search-wrapper {
   position: relative;
   display: inline-flex;
