@@ -206,6 +206,102 @@ router.post('/:id/regenerate', async (req: Request, res: Response) => {
   }
 });
 
+// BULK ACTIONS
+// POST /api/comments/bulk-approve
+router.post('/bulk-approve', async (req: Request, res: Response) => {
+  try {
+    const ids: string[] = req.body?.ids || [];
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ success: false, error: 'Nessun commento selezionato' });
+    }
+
+    let approvedCount = 0;
+    let publishedCount = 0;
+
+    for (const id of ids) {
+      const comment = await dbRepository.getCommentById(id);
+      if (!comment || comment.status === 'approved') continue;
+
+      const replyText = comment.final_reply || comment.proposed_reply || '';
+      if (!replyText || replyText.startsWith('[Errore AI')) continue;
+
+      let pubRes = { success: false };
+      if (comment.platform?.toLowerCase() === 'tiktok') {
+        pubRes = await TikTokPublisherService.publishReply(comment.id, replyText);
+      } else {
+        pubRes = await MetaPublisherService.publishReply(comment.id, replyText);
+      }
+
+      if (pubRes.success) publishedCount++;
+
+      await dbRepository.updateComment(comment.id, {
+        status: 'approved',
+        final_reply: replyText,
+        replied_at: new Date().toISOString(),
+      });
+
+      await dbRepository.saveApprovedReply({
+        profile_id: comment.profile_id,
+        comment_id: comment.id,
+        platform: comment.platform,
+        comment_text: comment.comment_text,
+        approved_reply: replyText,
+      });
+
+      approvedCount++;
+    }
+
+    res.json({
+      success: true,
+      message: `${approvedCount} commenti approvati (${publishedCount} pubblicati sui social).`,
+      approvedCount,
+      publishedCount,
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/comments/bulk-reject
+router.post('/bulk-reject', async (req: Request, res: Response) => {
+  try {
+    const ids: string[] = req.body?.ids || [];
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ success: false, error: 'Nessun commento selezionato' });
+    }
+
+    let rejectedCount = 0;
+    for (const id of ids) {
+      await dbRepository.updateComment(id, { status: 'rejected' });
+      rejectedCount++;
+    }
+
+    res.json({ success: true, message: `${rejectedCount} commenti scartati.`, rejectedCount });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/comments/bulk-delete
+router.post('/bulk-delete', async (req: Request, res: Response) => {
+  try {
+    const ids: string[] = req.body?.ids || [];
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ success: false, error: 'Nessun commento selezionato' });
+    }
+
+    let deletedCount = 0;
+    for (const id of ids) {
+      await dbRepository.deleteComment(id);
+      deletedCount++;
+    }
+
+    res.json({ success: true, message: `${deletedCount} commenti eliminati definitivamente.`, deletedCount });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // DELETE a comment permanently from inbox
 router.delete('/:id', async (req: Request, res: Response) => {
   try {

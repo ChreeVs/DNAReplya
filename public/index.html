@@ -135,39 +135,114 @@
       </div>
     </div>
 
-    <!-- TAB 1: INBOX COMMENTI REALI -->
+    <!-- TAB 1: INBOX COMMENTI REALI (COMPACT LIST VIEW) -->
     <section id="tab-inbox" class="tab-pane active">
       <div class="panel">
         <div class="panel-header">
           <div>
-            <h3>📬 Feed Commenti del Profilo</h3>
-            <p class="panel-desc">Commenti reali ricevuti dai canali del cliente con bozze generate e approvazione Telegram.</p>
+            <h3>📬 Inbox Commenti Multi-Canale</h3>
+            <p class="panel-desc">Elenco compatto ad alte prestazioni con filtri data, azioni bulk multiple e link diretto ai post social.</p>
           </div>
           <div class="header-actions">
             <div class="filter-group">
               <button class="filter-chip active" data-filter="all">Tutti</button>
               <button class="filter-chip" data-filter="pending">In Attesa</button>
-              <button class="filter-chip" data-filter="approved">Approvati</button>
+              <button class="filter-chip" data-filter="approved">Approvati & Inviati</button>
+              <button class="filter-chip" data-filter="rejected">Scartati</button>
             </div>
-            <button class="btn btn-secondary btn-sm" id="btnOpenIngestModal">📥 Registra Commento</button>
+            <button class="btn btn-secondary btn-sm" id="btnOpenIngestModal">📥 Simula Commento</button>
             <button class="btn btn-ghost btn-sm" id="btnRefreshFeed">🔄 Aggiorna</button>
           </div>
         </div>
 
-        <!-- Channel Filter Subbar & Live Sync -->
-        <div class="inbox-subbar">
-          <div class="channel-filter-group" id="channelFilterGroup">
-            <!-- Dynamically populated with active profile's connected channels -->
-            <button class="chan-filter-chip active" data-chan="all">🌐 Tutti i Canali</button>
+        <!-- Filter & Control Toolbar: Channels, Date Range, Sort & Search -->
+        <div class="inbox-toolbar-panel">
+          <div class="inbox-toolbar-row">
+            <!-- Channel Filter Chips -->
+            <div class="channel-filter-group" id="channelFilterGroup">
+              <button class="chan-filter-chip active" data-chan="all">🌐 Tutti i Canali</button>
+            </div>
+
+            <div class="inbox-subbar-actions">
+              <button class="btn btn-secondary btn-sm" id="btnSyncLiveComments" title="Controlla subito Facebook, Instagram e TikTok per nuovi commenti">
+                ⚡ Sincronizza Live
+              </button>
+            </div>
           </div>
-          <div class="inbox-subbar-actions">
-            <button class="btn btn-secondary btn-sm" id="btnSyncLiveComments" title="Controlla subito Facebook e Instagram per nuovi commenti">
-              ⚡ Sincronizza Live
+
+          <div class="inbox-filter-controls-row">
+            <div class="filter-controls-left">
+              <!-- Date Range Filter -->
+              <div class="control-field">
+                <span class="control-label">Filtra per data:</span>
+                <select id="inboxDateFilter" class="select-styled select-compact">
+                  <option value="all">📅 Tutte le date</option>
+                  <option value="today">📅 Oggi</option>
+                  <option value="yesterday">📅 Ieri</option>
+                  <option value="7days">📅 Ultimi 7 giorni</option>
+                  <option value="30days">📅 Ultimi 30 giorni</option>
+                </select>
+              </div>
+
+              <!-- Date Sort Filter -->
+              <div class="control-field">
+                <span class="control-label">Ordina:</span>
+                <select id="inboxDateSort" class="select-styled select-compact">
+                  <option value="desc">⬇️ Più recenti prima</option>
+                  <option value="asc">⬆️ Meno recenti prima</option>
+                </select>
+              </div>
+
+              <!-- Keyword / Author Search Input -->
+              <div class="inbox-search-wrapper">
+                <input type="text" id="inboxSearchInput" class="inbox-search-input" placeholder="🔍 Cerca autore o testo commento...">
+              </div>
+            </div>
+
+            <div class="inbox-counter-summary" id="inboxCounterSummary">
+              <!-- Dynamically populated e.g. "5 commenti visualizzati" -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Bulk Actions Bar (Sticky, appears when at least 1 comment is selected) -->
+        <div class="bulk-actions-bar hidden" id="bulkActionsBar">
+          <div class="bulk-bar-left">
+            <label class="bulk-checkbox-label">
+              <input type="checkbox" id="selectAllCheckbox" class="bulk-master-cb">
+              <span id="bulkSelectedCount" class="bulk-count-badge">0 selezionati</span>
+            </label>
+          </div>
+          <div class="bulk-bar-actions">
+            <button type="button" class="btn btn-primary btn-sm btn-bulk-action" id="btnBulkApprove">
+              🟢 Approva & Invia Selezionati
+            </button>
+            <button type="button" class="btn btn-ghost btn-sm btn-bulk-action" id="btnBulkReject">
+              ❌ Scarta
+            </button>
+            <button type="button" class="btn btn-ghost btn-sm btn-bulk-action" id="btnBulkDelete" style="color:var(--accent-rose);border-color:rgba(244,63,94,0.35);">
+              🗑️ Elimina
+            </button>
+            <button type="button" class="btn btn-ghost btn-sm" id="btnBulkDeselect">
+              ✕ Deseleziona
             </button>
           </div>
         </div>
 
-        <div class="feed-list" id="feedList">
+        <!-- Compact List Header (Columns) -->
+        <div class="inbox-list-header">
+          <div class="col-cb">
+            <input type="checkbox" id="headerMasterCheckbox" class="bulk-master-cb" title="Seleziona tutti i commenti visibili">
+          </div>
+          <div class="col-author">Canale & Autore</div>
+          <div class="col-content">Commento & Risposta AI</div>
+          <div class="col-status">Stato</div>
+          <div class="col-date">Data Ricezione</div>
+          <div class="col-actions">Azioni & Post Link</div>
+        </div>
+
+        <!-- Feed List Rows (The "X -------" Structure) -->
+        <div class="feed-list inbox-table-body" id="feedList">
           <div class="empty-state">
             <span class="empty-icon">📭</span>
             <p>Nessun commento presente per questo profilo.<br>Collega i canali social o registra il primo commento per iniziare.</p>

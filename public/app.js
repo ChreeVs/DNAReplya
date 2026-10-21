@@ -13,6 +13,10 @@ document.addEventListener('DOMContentLoaded', () => {
   let activeChannelAccountId = null;
   let activeModalCommentId = null;
   let currentOAuthSessionId = null;
+  let selectedCommentIds = new Set();
+  let activeDateFilter = 'all';
+  let activeDateSort = 'desc';
+  let activeSearchQuery = '';
 
   // DOM Elements - Auth & Session
   const authGateModal = document.getElementById('authGateModal');
@@ -61,6 +65,18 @@ document.addEventListener('DOMContentLoaded', () => {
   const chanFilterChips = document.querySelectorAll('.chan-filter-chip');
   const btnSyncLiveComments = document.getElementById('btnSyncLiveComments');
   const btnOpenIngestModal = document.getElementById('btnOpenIngestModal');
+  const inboxDateFilter = document.getElementById('inboxDateFilter');
+  const inboxDateSort = document.getElementById('inboxDateSort');
+  const inboxSearchInput = document.getElementById('inboxSearchInput');
+  const inboxCounterSummary = document.getElementById('inboxCounterSummary');
+  const bulkActionsBar = document.getElementById('bulkActionsBar');
+  const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+  const headerMasterCheckbox = document.getElementById('headerMasterCheckbox');
+  const bulkSelectedCount = document.getElementById('bulkSelectedCount');
+  const btnBulkApprove = document.getElementById('btnBulkApprove');
+  const btnBulkReject = document.getElementById('btnBulkReject');
+  const btnBulkDelete = document.getElementById('btnBulkDelete');
+  const btnBulkDeselect = document.getElementById('btnBulkDeselect');
 
   // DOM Elements - Tab 2: Channels
   const channelsGrid = document.getElementById('channelsGrid');
@@ -1254,8 +1270,146 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // Date Formatting Helper (Human relative + exact Italian datetime)
+  function formatCommentDate(dateStr) {
+    if (!dateStr) return { relative: 'Data non disp.', full: '' };
+    const cleanStr = dateStr.includes('T') ? dateStr : dateStr.replace(' ', 'T') + 'Z';
+    const d = new Date(cleanStr);
+    const validDate = isNaN(d.getTime()) ? new Date(dateStr) : d;
+    if (isNaN(validDate.getTime())) return { relative: dateStr, full: dateStr };
+
+    const now = new Date();
+    const diffMs = now.getTime() - validDate.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    let relative = '';
+    if (diffMins < 2) relative = 'Adesso';
+    else if (diffMins < 60) relative = `${diffMins}m fa`;
+    else if (diffHours < 24) relative = `${diffHours}h fa`;
+    else if (diffDays === 1) relative = 'Ieri';
+    else if (diffDays < 7) relative = `${diffDays}g fa`;
+    else relative = validDate.toLocaleDateString('it-IT', { day: '2-digit', month: 'short' });
+
+    const full = validDate.toLocaleDateString('it-IT', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    return { relative, full };
+  }
+
+  // Resolves direct URL to the social post for Facebook, Instagram, TikTok, LinkedIn, Threads
+  function getPostUrl(c) {
+    if (c.post_url && c.post_url.trim()) return c.post_url.trim();
+    const p = (c.platform || '').toLowerCase();
+
+    // 1. Facebook
+    if (p === 'facebook') {
+      if (c.platform_post_id) {
+        return `https://www.facebook.com/${c.platform_post_id}`;
+      }
+      if (c.platform_comment_id) {
+        return `https://www.facebook.com/${c.platform_comment_id}`;
+      }
+      return 'https://www.facebook.com';
+    }
+
+    // 2. Instagram
+    if (p === 'instagram') {
+      const acc = (activeProfileAccounts || []).find(a => a.id === c.social_account_id || a.platform === 'instagram');
+      const handle = (acc?.account_handle || '').replace(/^@/, '');
+      if (handle) return `https://www.instagram.com/${handle}/`;
+      return 'https://www.instagram.com';
+    }
+
+    // 3. TikTok
+    if (p === 'tiktok') {
+      const acc = (activeProfileAccounts || []).find(a => a.id === c.social_account_id || a.platform === 'tiktok');
+      const handle = (acc?.account_handle || '').replace(/^@/, '');
+      if (handle && c.platform_post_id && !c.platform_post_id.startsWith('tt_')) {
+        return `https://www.tiktok.com/@${handle}/video/${c.platform_post_id}`;
+      }
+      if (handle) return `https://www.tiktok.com/@${handle}`;
+      return 'https://www.tiktok.com';
+    }
+
+    // 4. LinkedIn
+    if (p === 'linkedin') {
+      if (c.platform_post_id) return `https://www.linkedin.com/feed/update/${c.platform_post_id}`;
+      return 'https://www.linkedin.com';
+    }
+
+    // 5. Threads
+    if (p === 'threads') {
+      const acc = (activeProfileAccounts || []).find(a => a.id === c.social_account_id || a.platform === 'threads');
+      const handle = (acc?.account_handle || '').replace(/^@/, '');
+      if (handle) return `https://www.threads.net/@${handle}`;
+      return 'https://www.threads.net';
+    }
+
+    return 'https://www.google.com';
+  }
+
+  window.openPostOriginal = (id) => {
+    const comment = (activeProfileComments || []).find(c => c.id === id);
+    if (!comment) return;
+    const url = getPostUrl(comment);
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  window.toggleRowExpand = (id) => {
+    const row = document.getElementById(`row-${id}`);
+    if (row) row.classList.toggle('expanded');
+  };
+
+  window.toggleSelectComment = (id) => {
+    if (selectedCommentIds.has(id)) {
+      selectedCommentIds.delete(id);
+    } else {
+      selectedCommentIds.add(id);
+    }
+    updateBulkBar();
+  };
+
+  function updateBulkBar() {
+    const filtered = filterComments(activeProfileComments);
+    const count = selectedCommentIds.size;
+    if (bulkSelectedCount) {
+      bulkSelectedCount.textContent = `${count} selezionati`;
+    }
+
+    if (count > 0) {
+      if (bulkActionsBar) bulkActionsBar.classList.remove('hidden');
+    } else {
+      if (bulkActionsBar) bulkActionsBar.classList.add('hidden');
+    }
+
+    // Update master checkboxes
+    const allFilteredSelected = filtered.length > 0 && filtered.every(c => selectedCommentIds.has(c.id));
+    if (selectAllCheckbox) selectAllCheckbox.checked = allFilteredSelected;
+    if (headerMasterCheckbox) headerMasterCheckbox.checked = allFilteredSelected;
+
+    // Toggle selected class on rendered rows
+    document.querySelectorAll('.inbox-row').forEach(row => {
+      const rowId = row.dataset.id;
+      const cb = row.querySelector('.comment-select-cb');
+      const isSel = selectedCommentIds.has(rowId);
+      row.classList.toggle('selected', isSel);
+      if (cb) cb.checked = isSel;
+    });
+  }
+
   function filterComments(comments) {
-    return (comments || []).filter(c => {
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const startOfYesterday = startOfToday - 86400000;
+
+    let filtered = (comments || []).filter(c => {
       // 1. EXCLUDE SELF-COMMENTS: Filter out comments posted by the connected client account itself
       const isSelfComment = (activeProfileAccounts || []).some(acc => {
         const accHandle = (acc.account_handle || '').replace(/^@/, '').toLowerCase().trim();
@@ -1278,6 +1432,8 @@ document.addEventListener('DOMContentLoaded', () => {
         statusMatch = c.status === 'pending';
       } else if (activeFilter === 'approved') {
         statusMatch = (c.status === 'approved' || c.status === 'modified' || c.status === 'auto_replied');
+      } else if (activeFilter === 'rejected') {
+        statusMatch = c.status === 'rejected';
       }
 
       // 3. Connected Channel Filter
@@ -1290,8 +1446,43 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
 
-      return statusMatch && channelMatch;
+      // 4. Date Filter
+      let dateMatch = true;
+      if (activeDateFilter !== 'all') {
+        const cTime = new Date(c.received_at?.includes('T') ? c.received_at : (c.received_at || '').replace(' ', 'T') + 'Z').getTime() || new Date(c.received_at).getTime() || 0;
+        if (activeDateFilter === 'today') {
+          dateMatch = cTime >= startOfToday;
+        } else if (activeDateFilter === 'yesterday') {
+          dateMatch = cTime >= startOfYesterday && cTime < startOfToday;
+        } else if (activeDateFilter === '7days') {
+          dateMatch = cTime >= (now.getTime() - 7 * 86400000);
+        } else if (activeDateFilter === '30days') {
+          dateMatch = cTime >= (now.getTime() - 30 * 86400000);
+        }
+      }
+
+      // 5. Search Query Filter
+      let searchMatch = true;
+      if (activeSearchQuery && activeSearchQuery.trim()) {
+        const q = activeSearchQuery.toLowerCase().trim();
+        const text = (c.comment_text || '').toLowerCase();
+        const author = (c.author_name || '').toLowerCase();
+        const username = (c.author_username || '').toLowerCase();
+        const snippet = (c.post_snippet || '').toLowerCase();
+        searchMatch = text.includes(q) || author.includes(q) || username.includes(q) || snippet.includes(q);
+      }
+
+      return statusMatch && channelMatch && dateMatch && searchMatch;
     });
+
+    // 6. Date Sorting
+    filtered.sort((a, b) => {
+      const timeA = new Date(a.received_at?.includes('T') ? a.received_at : (a.received_at || '').replace(' ', 'T') + 'Z').getTime() || new Date(a.received_at).getTime() || 0;
+      const timeB = new Date(b.received_at?.includes('T') ? b.received_at : (b.received_at || '').replace(' ', 'T') + 'Z').getTime() || new Date(b.received_at).getTime() || 0;
+      return activeDateSort === 'asc' ? timeA - timeB : timeB - timeA;
+    });
+
+    return filtered;
   }
 
   function updateCommentsMetrics() {
@@ -1329,25 +1520,37 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function renderFeed(comments) {
+    // Clean up selections that no longer exist
+    const currentValidIds = new Set((activeProfileComments || []).map(c => c.id));
+    for (const selId of selectedCommentIds) {
+      if (!currentValidIds.has(selId)) selectedCommentIds.delete(selId);
+    }
+
+    if (inboxCounterSummary) {
+      inboxCounterSummary.textContent = `${comments.length} commenti visualizzati`;
+    }
+
     if (!comments || comments.length === 0) {
       feedList.innerHTML = `
         <div class="empty-state">
           <span class="empty-icon">📭</span>
-          <p>Nessun commento trovato per questo filtro.<br>I commenti reali appariranno qui automaticamente ad ogni sincronizzazione.</p>
+          <p>Nessun commento trovato con i filtri attuali.<br>Modifica i filtri o clicca su "Sincronizza Live".</p>
         </div>
       `;
+      updateBulkBar();
       return;
     }
 
     feedList.innerHTML = comments.map(c => {
       const logo = getPlatformOfficialLogo(c.platform, 18);
       const platformName = (c.platform || '').charAt(0).toUpperCase() + (c.platform || '').slice(1);
+      const isSelected = selectedCommentIds.has(c.id);
       const statusLabels = {
-        pending: 'In Attesa Approvazione',
+        pending: 'In Attesa',
         approved: 'Approvato',
-        modified: 'Modificato & Inviato',
+        modified: 'Modificato',
         rejected: 'Scartato',
-        auto_replied: 'Auto-Pilot Inviato',
+        auto_replied: 'Auto-Pilot',
       };
 
       const displayReply = c.final_reply || c.proposed_reply;
@@ -1362,62 +1565,210 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
 
-      const initial = (authorDisplayName.charAt(0) || '👤').toUpperCase();
-      const postSnippetText = c.post_snippet ? `su "${escapeHtml(c.post_snippet)}"` : '';
-
+      const dateInfo = formatCommentDate(c.received_at);
       const isErrorReply = Boolean(displayReply && displayReply.startsWith('[Errore AI'));
-      const isDraftReply = Boolean(displayReply && displayReply.startsWith('[Bozza]'));
 
       return `
-        <div class="feed-card" id="card-${c.id}">
-          <div>
-            <div class="feed-card-header">
-              <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
-                <span class="card-platform-badge" style="display:inline-flex;align-items:center;gap:0.4rem;">
-                  ${logo}
-                  <span style="font-weight:600;">${escapeHtml(platformName)}</span>
-                </span>
-                <span class="status-badge ${c.status}">${statusLabels[c.status] || c.status}</span>
-              </div>
-              <button class="btn-card-action reject btn-delete-comment" style="padding:0.25rem 0.65rem;font-size:0.75rem;border-radius:var(--radius-xs);display:flex;align-items:center;gap:0.35rem;" onclick="window.deleteComment('${c.id}')" title="Elimina definitivamente questo commento dall'inbox">
-                🗑️ Elimina
-              </button>
-            </div>
+        <div class="inbox-row ${isSelected ? 'selected' : ''}" id="row-${c.id}" data-id="${c.id}" onclick="window.toggleRowExpand('${c.id}')">
+          <!-- Colonna 1: Checkbox (X) -->
+          <div class="col-cb" onclick="event.stopPropagation()">
+            <input type="checkbox" class="comment-select-cb" data-id="${c.id}" ${isSelected ? 'checked' : ''} onchange="window.toggleSelectComment('${c.id}')">
+          </div>
 
-            <div class="feed-author-row">
-              <div class="author-avatar">${escapeHtml(initial)}</div>
-              <div class="author-info">
-                <span class="author-fullname">${escapeHtml(authorDisplayName)}</span>
-                ${postSnippetText ? `<span class="author-context">${postSnippetText}</span>` : ''}
-              </div>
+          <!-- Colonna 2: Canale & Autore -->
+          <div class="col-author">
+            <div class="row-channel-logo" title="${escapeHtml(platformName)}">
+              ${logo}
             </div>
-
-            <div class="feed-comment-bubble">
-              "${escapeHtml(c.comment_text)}"
-            </div>
-
-            <div class="feed-proposed-box ${isErrorReply ? 'error-box' : ''}">
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.35rem;">
-                <span class="proposed-label" style="${isErrorReply ? 'color:var(--accent-rose);font-weight:700;' : ''}">
-                  ${isErrorReply ? '⚠️ Avviso AI Gemini:' : (c.status === 'pending' ? '🤖 Proposta Risposta AI:' : '📤 Risposta Finale Pubblicata:')}
-                </span>
-                ${isErrorReply ? `<button class="btn btn-ghost btn-sm" style="font-size:0.75rem;padding:0.2rem 0.55rem;color:var(--lime);border-color:var(--border-active);" onclick="window.regenerateComment('${c.id}')">🔄 Risolvi con Gemini 2.0</button>` : ''}
-              </div>
-              <p class="proposed-text" style="${isErrorReply ? 'color:#fca5a5;font-size:0.82rem;' : ''}">${escapeHtml(displayReply || 'Nessuna risposta disponibile')}</p>
+            <div class="row-author-info">
+              <span class="row-author-name" title="${escapeHtml(authorDisplayName)}">${escapeHtml(authorDisplayName)}</span>
+              <span class="row-channel-name">${escapeHtml(platformName)}</span>
             </div>
           </div>
 
-          ${c.status === 'pending' ? `
-            <div class="feed-card-actions">
-              <button class="btn-card-action approve" onclick="window.approveComment('${c.id}')">🟢 Approva e Invia</button>
-              <button class="btn-card-action regen" onclick="window.regenerateComment('${c.id}')">🔄 Rigenera</button>
-              <button class="btn-card-action edit" onclick="window.openEditModal('${c.id}')">✏️ Modifica</button>
-              <button class="btn-card-action reject" onclick="window.rejectComment('${c.id}')">❌ Scarta</button>
+          <!-- Colonna 3: Commento & Risposta AI -->
+          <div class="col-content">
+            <div class="row-comment-bubble">
+              "${escapeHtml(c.comment_text)}"
             </div>
-          ` : ''}
+            <div class="row-reply-bubble ${isErrorReply ? 'error-box' : ''}">
+              <span class="reply-tag">${isErrorReply ? '⚠️ Avviso AI:' : (c.status === 'pending' ? '🤖 Bozza AI:' : '📤 Risposta Inviata:')}</span>
+              <span class="reply-snippet">${escapeHtml(displayReply || 'Nessuna risposta disponibile')}</span>
+            </div>
+            ${c.post_snippet ? `<div class="row-post-ref">📌 Su: <i>${escapeHtml(c.post_snippet.slice(0, 95))}</i></div>` : ''}
+          </div>
+
+          <!-- Colonna 4: Stato -->
+          <div class="col-status">
+            <span class="status-badge ${c.status}">${statusLabels[c.status] || c.status}</span>
+          </div>
+
+          <!-- Colonna 5: Data Ricezione -->
+          <div class="col-date" title="${escapeHtml(dateInfo.full)}">
+            <span class="date-relative">${escapeHtml(dateInfo.relative)}</span>
+            <span class="date-exact">${escapeHtml(dateInfo.full)}</span>
+          </div>
+
+          <!-- Colonna 6: Azioni Rapide & Tasto Apri Post -->
+          <div class="col-actions" onclick="event.stopPropagation()">
+            <button class="btn-row-action btn-open-post" onclick="window.openPostOriginal('${c.id}')" title="Apri il post originale su ${escapeHtml(platformName)}">
+              🔗 Apri Post
+            </button>
+            ${c.status === 'pending' ? `
+              <button class="btn-row-action approve" onclick="window.approveComment('${c.id}')" title="Approva e invia risposta ufficiale">
+                🟢 Approva
+              </button>
+              <button class="btn-row-action edit" onclick="window.openEditModal('${c.id}')" title="Modifica testo risposta">
+                ✏️
+              </button>
+              <button class="btn-row-action regen" onclick="window.regenerateComment('${c.id}')" title="Rigenera con AI">
+                🔄
+              </button>
+              <button class="btn-row-action reject" onclick="window.rejectComment('${c.id}')" title="Scarta commento">
+                ❌
+              </button>
+            ` : ''}
+            <button class="btn-row-action delete" onclick="window.deleteComment('${c.id}')" title="Elimina definitivamente commento">
+              🗑️
+            </button>
+          </div>
         </div>
       `;
     }).join('');
+
+    updateBulkBar();
+  }
+
+  // Bulk Selection Master Listeners
+  function handleSelectAll(checked) {
+    const filtered = filterComments(activeProfileComments);
+    if (checked) {
+      filtered.forEach(c => selectedCommentIds.add(c.id));
+    } else {
+      filtered.forEach(c => selectedCommentIds.delete(c.id));
+    }
+    updateBulkBar();
+  }
+
+  if (selectAllCheckbox) {
+    selectAllCheckbox.addEventListener('change', (e) => handleSelectAll(e.target.checked));
+  }
+  if (headerMasterCheckbox) {
+    headerMasterCheckbox.addEventListener('change', (e) => handleSelectAll(e.target.checked));
+  }
+  if (btnBulkDeselect) {
+    btnBulkDeselect.addEventListener('click', () => {
+      selectedCommentIds.clear();
+      updateBulkBar();
+    });
+  }
+
+  // Bulk Approve Handler
+  if (btnBulkApprove) {
+    btnBulkApprove.addEventListener('click', async () => {
+      const ids = Array.from(selectedCommentIds);
+      if (ids.length === 0) return;
+      if (!confirm(`Sei sicuro di voler approvare e inviare ${ids.length} commenti selezionati?`)) return;
+
+      btnBulkApprove.disabled = true;
+      btnBulkApprove.textContent = '⏳ Invio in corso...';
+      try {
+        const res = await apiFetch('/api/comments/bulk-approve', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast(`🎉 ${data.message}`, 'success');
+          selectedCommentIds.clear();
+          await loadActiveProfileComments();
+          await loadActiveProfileMemory();
+        } else {
+          showToast(`❌ Errore: ${data.error}`, 'error');
+        }
+      } catch (err) {
+        showToast('❌ Errore durante l\'approvazione massiva', 'error');
+      } finally {
+        btnBulkApprove.disabled = false;
+        btnBulkApprove.textContent = '🟢 Approva & Invia Selezionati';
+      }
+    });
+  }
+
+  // Bulk Reject Handler
+  if (btnBulkReject) {
+    btnBulkReject.addEventListener('click', async () => {
+      const ids = Array.from(selectedCommentIds);
+      if (ids.length === 0) return;
+      if (!confirm(`Scartare ${ids.length} commenti selezionati?`)) return;
+
+      try {
+        const res = await apiFetch('/api/comments/bulk-reject', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast(`❌ ${data.message}`, 'info');
+          selectedCommentIds.clear();
+          await loadActiveProfileComments();
+        } else {
+          showToast(`❌ Errore: ${data.error}`, 'error');
+        }
+      } catch (err) {
+        showToast('❌ Errore durante lo scarto massivo', 'error');
+      }
+    });
+  }
+
+  // Bulk Delete Handler
+  if (btnBulkDelete) {
+    btnBulkDelete.addEventListener('click', async () => {
+      const ids = Array.from(selectedCommentIds);
+      if (ids.length === 0) return;
+      if (!confirm(`Sei sicuro di voler eliminare DEFINITIVAMENTE ${ids.length} commenti dall'inbox? L'operazione non è reversibile.`)) return;
+
+      try {
+        showToast('Eliminazione massiva in corso...', 'info');
+        const res = await apiFetch('/api/comments/bulk-delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast(`🗑️ ${data.message}`, 'success');
+          selectedCommentIds.clear();
+          await loadActiveProfileComments();
+        } else {
+          showToast(`❌ Errore: ${data.error}`, 'error');
+        }
+      } catch (err) {
+        showToast('❌ Errore durante l\'eliminazione massiva', 'error');
+      }
+    });
+  }
+
+  // Date Filter & Sort Listeners
+  if (inboxDateFilter) {
+    inboxDateFilter.addEventListener('change', (e) => {
+      activeDateFilter = e.target.value;
+      renderFeed(filterComments(activeProfileComments));
+    });
+  }
+  if (inboxDateSort) {
+    inboxDateSort.addEventListener('change', (e) => {
+      activeDateSort = e.target.value;
+      renderFeed(filterComments(activeProfileComments));
+    });
+  }
+  if (inboxSearchInput) {
+    inboxSearchInput.addEventListener('input', (e) => {
+      activeSearchQuery = e.target.value;
+      renderFeed(filterComments(activeProfileComments));
+    });
   }
 
   filterChips.forEach(chip => {
