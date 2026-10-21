@@ -78,14 +78,14 @@
     <!-- Active Profile Context Banner -->
     <div class="profile-banner">
       <div class="profile-banner-left">
-        <div class="profile-avatar" id="bannerProfileAvatar">SS</div>
+        <div class="profile-avatar" id="bannerProfileAvatar">--</div>
         <div>
           <div class="profile-title-row">
-            <h2 id="bannerProfileName">Scarabocchi Saggi</h2>
+            <h2 id="bannerProfileName">Caricamento Profilo...</h2>
             <span class="profile-tag" id="bannerProfileTag">Cliente Attivo</span>
             <span class="autopilot-pill" id="bannerAutopilotPill">Human-in-the-Loop</span>
           </div>
-          <p class="profile-banner-desc" id="bannerProfileDesc">Brand editoriale e contenuti illustrati - Gestione social unificata</p>
+          <p class="profile-banner-desc" id="bannerProfileDesc"></p>
         </div>
       </div>
       <div class="profile-banner-stats">
@@ -166,7 +166,7 @@
             <div class="code-grid">
               <div class="code-box">
                 <span class="code-label">Callback URL (Webhook Ingestion):</span>
-                <code>https://tuo-dominio.com/api/webhooks/meta</code>
+                <code id="whCallbackUrl">https://dnareplya.onrender.com/api/webhooks/meta</code>
               </div>
               <div class="code-box">
                 <span class="code-label">Verify Token Segreto:</span>
@@ -197,7 +197,7 @@
             <div class="form-row mt-3">
               <div class="form-group flex-1">
                 <label for="profLogoUrl">URL Logo del Brand (opzionale)</label>
-                <input type="text" id="profLogoUrl" placeholder="https://tuosito.it/logo.png">
+                <input type="text" id="profLogoUrl" placeholder="https://.../logo.png">
               </div>
               <div class="form-group flex-1">
                 <label>Colore Accent del Brand</label>
@@ -241,22 +241,22 @@
 
           <div class="form-group">
             <label for="profCustomTone">Istruzioni di Stile Personalizzate</label>
-            <textarea id="profCustomTone" rows="2" placeholder="Es. Dare sempre del 'tu', chiudere con 'Un abbraccio dal team Scarabocchi Saggi', non essere mai formali né polemici."></textarea>
+            <textarea id="profCustomTone" rows="2" placeholder="Es. Dare del 'tu', tono empatico e risolutivo, non essere mai polemici né troppo formali."></textarea>
           </div>
 
           <div class="form-group">
             <label for="profBusinessKnowledge">Base di Conoscenza & FAQ del Cliente (I Limiti Assoluti)</label>
             <p class="field-hint">L'AI attingerà SOLO a questi dati per prezzi, spedizioni, resi, orari o politiche:</p>
-            <textarea id="profBusinessKnowledge" rows="5" placeholder="Es:
-- Spedizione: 4,90€, gratuita sopra i 39€ con consegna in 24/48h.
-- Reso: gratuito entro 14 giorni.
-- Email assistenza: info@scarabocchisaggi.it"></textarea>
+            <textarea id="profBusinessKnowledge" rows="5" placeholder="Inserisci qui le informazioni verificate del cliente:
+- Politiche di prezzo, spedizioni e resi
+- Orari di apertura e contatti ufficiali
+- Risposte a domande frequenti (FAQ)"></textarea>
           </div>
 
           <div class="form-group">
             <label for="profForbiddenWords">Parole o Argomenti Vietati (Blacklist)</label>
             <p class="field-hint">Termini separati da virgola che l'AI non deve MAI usare nelle risposte per questo cliente:</p>
-            <input type="text" id="profForbiddenWords" placeholder="es. sconto speciale, difettoso, colpa nostra, concorrente">
+            <input type="text" id="profForbiddenWords" placeholder="es. parola_vietata, sconto non autorizzato, concorrente">
           </div>
 
           <hr class="divider">
@@ -424,11 +424,11 @@
       <form id="createProfileForm" class="modal-body">
         <div class="form-group">
           <label for="newProfileName">Nome del Cliente / Brand</label>
-          <input type="text" id="newProfileName" placeholder="es. Scarabocchi Saggi, Agenzia Creativa, Brand Moda" required>
+          <input type="text" id="newProfileName" placeholder="es. Nome Brand o Cliente" required>
         </div>
         <div class="form-group">
           <label for="newProfileDesc">Descrizione / Settore</label>
-          <input type="text" id="newProfileDesc" placeholder="es. E-commerce abbigliamento sostenibile">
+          <input type="text" id="newProfileDesc" placeholder="es. Settore o breve descrizione del profilo">
         </div>
         <div class="form-row">
           <div class="form-group flex-1">
@@ -478,11 +478,11 @@
         </div>
         <div class="form-group">
           <label for="connAccountName">Nome Account / Etichetta</label>
-          <input type="text" id="connAccountName" placeholder="es. Scarabocchi Saggi Ufficiale" required>
+          <input type="text" id="connAccountName" placeholder="es. Nome Pagina Ufficiale" required>
         </div>
         <div class="form-group">
           <label for="connAccountHandle">Handle Social (es. @nomepagina)</label>
-          <input type="text" id="connAccountHandle" placeholder="es. @scarabocchi_saggi" required>
+          <input type="text" id="connAccountHandle" placeholder="es. @nomeprofilo" required>
         </div>
         <div class="form-group">
           <label for="connExternalId">ID Pagina / ID Account Esterno (opzionale)</label>
@@ -518,16 +518,16 @@
           </div>
           <div class="form-group flex-1">
             <label for="ingestAuthor">Autore (@username)</label>
-            <input type="text" id="ingestAuthor" placeholder="es. mario_rossi" required>
+            <input type="text" id="ingestAuthor" placeholder="es. @nome_utente" required>
           </div>
         </div>
         <div class="form-group">
           <label for="ingestPostSnippet">Post di Riferimento</label>
-          <input type="text" id="ingestPostSnippet" placeholder="es. Nuovo post: Guida agli acquisti">
+          <input type="text" id="ingestPostSnippet" placeholder="es. Titolo post o ID contenuto">
         </div>
         <div class="form-group">
           <label for="ingestText">Testo del Commento Ricevuto</label>
-          <textarea id="ingestText" rows="3" placeholder="Scrivi qui il commento ricevuto dal cliente..." required></textarea>
+          <textarea id="ingestText" rows="3" placeholder="Scrivi qui il commento ricevuto dal follower..." required></textarea>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-ghost" id="btnCancelIngestModal">Annulla</button>

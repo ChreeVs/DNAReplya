@@ -1134,6 +1134,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- Initial App Bootstrapping ---
   async function initApp() {
+    const whCallbackUrl = document.getElementById('whCallbackUrl');
+    if (whCallbackUrl) {
+      whCallbackUrl.textContent = `${window.location.origin}/api/webhooks/meta`;
+    }
     await loadProfiles();
     await loadGlobalSettings();
   }

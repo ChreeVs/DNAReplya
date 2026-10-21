@@ -155,29 +155,18 @@ export async function initDatabase(): Promise<void> {
         defaultProfileId,
         'Scarabocchi Saggi',
         'scarabocchi-saggi',
-        'Brand editoriale e contenuti illustrati - Gestione social unificata',
+        'Profilo Cliente Principale',
         '#a3e635',
         '',
         'openai',
         'gpt-4o-mini',
         'friendly',
-        'Tono caloroso, accogliente e creativo. Dare del "tu", usare emoji con discrezione.',
+        '',
         280,
-        'sconto speciale, difettoso, gratuito, colpa nostra',
-        '- Spedizioni: 4,90€ con corriere espresso (24/48h), gratuite sopra i 39€.\n- Reso: gratuito entro 14 giorni dalla ricezione.\n- Per collaborazioni scrivere a: info@scarabocchisaggi.it.',
+        '',
+        '',
         0,
       ],
-    });
-
-    await db.execute({
-      sql: `
-        INSERT INTO social_accounts (id, profile_id, platform, account_name, account_handle, status, notes)
-        VALUES 
-          ('acc_ig_1', ?, 'instagram', 'Scarabocchi Saggi IG', '@scarabocchi_saggi', 'connected', 'Account Instagram Creator collegato'),
-          ('acc_fb_1', ?, 'facebook', 'Scarabocchi Saggi Pagina FB', 'scarabocchi.saggi.official', 'connected', 'Pagina Facebook Ufficiale'),
-          ('acc_tt_1', ?, 'tiktok', 'Scarabocchi Saggi TikTok', '@scarabocchisaggi', 'connected', 'TikTok Business Channel')
-      `,
-      args: [defaultProfileId, defaultProfileId, defaultProfileId],
     });
   }
 }
