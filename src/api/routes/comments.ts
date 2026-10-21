@@ -206,4 +206,20 @@ router.post('/:id/regenerate', async (req: Request, res: Response) => {
   }
 });
 
+// DELETE a comment permanently from inbox
+router.delete('/:id', async (req: Request, res: Response) => {
+  try {
+    const commentId = String(req.params.id);
+    const comment = await dbRepository.getCommentById(commentId);
+    if (!comment) {
+      return res.status(404).json({ success: false, error: 'Commento non trovato' });
+    }
+
+    await dbRepository.deleteComment(comment.id);
+    res.json({ success: true, message: 'Commento eliminato definitivamente dall\'inbox' });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 export default router;

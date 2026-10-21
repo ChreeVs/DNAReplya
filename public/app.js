@@ -132,6 +132,36 @@ document.addEventListener('DOMContentLoaded', () => {
   const ttAccessToken = document.getElementById('ttAccessToken');
   const ttBusinessId = document.getElementById('ttBusinessId');
 
+  // Channel Hub Modal
+  const btnOpenConnectHubModal = document.getElementById('btnOpenConnectHubModal');
+  const connectChannelHubModal = document.getElementById('connectChannelHubModal');
+  const btnCloseChannelHubModal = document.getElementById('btnCloseChannelHubModal');
+  const btnHubActionMeta = document.getElementById('btnHubActionMeta');
+  const btnHubActionTikTok = document.getElementById('btnHubActionTikTok');
+  const btnHubActionLinkedIn = document.getElementById('btnHubActionLinkedIn');
+  const btnHubActionThreads = document.getElementById('btnHubActionThreads');
+  const btnHubOpenManual = document.getElementById('btnHubOpenManual');
+
+  // LinkedIn Modal
+  const connectLinkedInModal = document.getElementById('connectLinkedInModal');
+  const btnCloseLinkedInModal = document.getElementById('btnCloseLinkedInModal');
+  const btnCancelLinkedInModal = document.getElementById('btnCancelLinkedInModal');
+  const connectLinkedInForm = document.getElementById('connectLinkedInForm');
+  const liAccountName = document.getElementById('liAccountName');
+  const liAccountHandle = document.getElementById('liAccountHandle');
+  const liAccessToken = document.getElementById('liAccessToken');
+  const liOrganizationId = document.getElementById('liOrganizationId');
+
+  // Threads Modal
+  const connectThreadsModal = document.getElementById('connectThreadsModal');
+  const btnCloseThreadsModal = document.getElementById('btnCloseThreadsModal');
+  const btnCancelThreadsModal = document.getElementById('btnCancelThreadsModal');
+  const connectThreadsForm = document.getElementById('connectThreadsForm');
+  const thAccountName = document.getElementById('thAccountName');
+  const thAccountHandle = document.getElementById('thAccountHandle');
+  const thAccessToken = document.getElementById('thAccessToken');
+  const thUserId = document.getElementById('thUserId');
+
   const ingestModal = document.getElementById('ingestModal');
   const ingestCommentForm = document.getElementById('ingestCommentForm');
   const btnCloseIngestModal = document.getElementById('btnCloseIngestModal');
@@ -671,6 +701,27 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // Official SVG Logos Helper
+  function getPlatformOfficialLogo(platform, size = 18) {
+    const p = (platform || '').toLowerCase();
+    if (p === 'facebook') {
+      return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="#1877F2" style="vertical-align:middle;flex-shrink:0;"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>`;
+    }
+    if (p === 'instagram') {
+      return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" style="vertical-align:middle;flex-shrink:0;"><rect width="24" height="24" rx="6" fill="#b900b4"/><path fill="#ffffff" d="M12 7.006a4.994 4.994 0 1 0 0 9.988 4.994 4.994 0 0 0 0-9.988zm0 8.238a3.244 3.244 0 1 1 0-6.488 3.244 3.244 0 0 1 0 6.488zm6.406-8.475a1.169 1.169 0 1 1-2.338 0 1.169 1.169 0 0 1 2.338 0zM12 4.167c2.551 0 2.853.01 3.861.056 2.766.126 4.05 1.42 4.176 4.176.046 1.008.056 1.31.056 3.861s-.01 2.853-.056 3.861c-.126 2.756-1.41 4.05-4.176 4.176-1.008.046-1.31.056-3.861.056s-2.853-.01-3.861-.056c-2.766-.126-4.05-1.42-4.176-4.176-.046-1.008-.056-1.31-.056-3.861s.01-2.853.056-3.861c.126-2.756 1.41-4.05 4.176-4.176 1.008-.046 1.31-.056 3.861-.056zM12 2.417c-2.595 0-2.92.011-3.938.057-3.92.179-6.089 2.348-6.268 6.268-.046 1.018-.057 1.343-.057 3.938s.011 2.92.057 3.938c.179 3.92 2.348 6.089 6.268 6.268 1.018.046 1.343.057 3.938.057s2.92-.011 3.938-.057c3.92-.179 6.089-2.348 6.268-6.268.046-1.018.057-1.343.057-3.938s-.011-2.92-.057-3.938c-.179-3.92-2.348-6.089-6.268-6.268-1.018-.046-1.343-.057-3.938-.057z"/></svg>`;
+    }
+    if (p === 'tiktok') {
+      return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="#ffffff" style="vertical-align:middle;flex-shrink:0;"><rect width="24" height="24" rx="6" fill="#000000"/><path d="M16.6 5.82s.51.5 1.35.74c.83.24 1.76.15 1.76.15V9.4s-.89-.04-1.74-.32c-.85-.28-1.44-.75-1.44-.75v6.52c0 2.22-1.78 4.02-3.98 4.02-2.2 0-3.98-1.8-3.98-4.02 0-2.22 1.78-4.02 3.98-4.02.42 0 .82.07 1.2.19v2.73a1.45 1.45 0 0 0-.96-.34c-.79 0-1.44.65-1.44 1.44 0 .8.65 1.44 1.44 1.44.79 0 1.44-.64 1.44-1.44V3.88h3.37v1.94z"/></svg>`;
+    }
+    if (p === 'linkedin') {
+      return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" style="vertical-align:middle;flex-shrink:0;"><rect width="24" height="24" rx="5" fill="#0A66C2"/><path fill="#ffffff" d="M19 19h-3.125v-4.893c0-1.167-.023-2.67-1.626-2.67-1.629 0-1.878 1.272-1.878 2.585V19H9.246V8.95h2.999v1.374h.042c.418-.792 1.439-1.626 2.962-1.626 3.167 0 3.751 2.085 3.751 4.796V19zM6.556 7.578a1.813 1.813 0 1 1 0-3.626 1.813 1.813 0 0 1 0 3.626zM8.118 19H4.993V8.95h3.125V19z"/></svg>`;
+    }
+    if (p === 'threads') {
+      return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" style="vertical-align:middle;flex-shrink:0;"><rect width="24" height="24" rx="6" fill="#141414" stroke="#333" stroke-width="1"/><path fill="#ffffff" d="M12.001 2c-5.522 0-10 4.477-10 10 0 5.521 4.478 10 10 10 5.52 0 10-4.479 10-10 0-5.523-4.48-10-10-10zm3.89 12.396c-.347.165-.773.295-1.28.39a8.134 8.134 0 0 1-1.332.112c-1.884 0-3.085-.882-3.085-2.261 0-1.464 1.285-2.455 3.197-2.455.539 0 1.05.08 1.52.238.384.13.722.316 1.008.556v-.427c0-1.503-.984-2.318-2.633-2.318-.95 0-1.829.288-2.544.83l-.75-1.258c.995-.747 2.215-1.144 3.54-1.144 2.766 0 4.293 1.488 4.293 4.195v4.545h-1.627v-.989c-.104-.012-.209-.012-.307-.012zm-1.07-2.483c-.22-.132-.49-.234-.813-.306a4.43 4.43 0 0 0-.915-.098c-1.096 0-1.782.527-1.782 1.34 0 .736.608 1.22 1.637 1.22.428 0 .806-.056 1.135-.168.324-.11.572-.256.738-.435v-1.553z"/></svg>`;
+    }
+    return `🌐`;
+  }
+
   // Dynamically renders filter chips ONLY for connected channels
   function renderChannelFilterChips() {
     const container = document.getElementById('channelFilterGroup');
@@ -681,22 +732,15 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    const platformIcons = {
-      instagram: '📸 Instagram',
-      facebook: '📘 Facebook',
-      threads: '🧵 Threads',
-      linkedin: '💼 LinkedIn',
-      tiktok: '🎵 TikTok',
-      x: '🐦 X',
-    };
-
     let html = `<button class="chan-filter-chip ${activeChannelFilter === 'all' ? 'active' : ''}" data-chan="all">🌐 Tutti i Canali (${activeProfileAccounts.length})</button>`;
 
     activeProfileAccounts.forEach(acc => {
-      const icon = platformIcons[acc.platform.toLowerCase()] || `🌐 ${acc.platform}`;
+      const logo = getPlatformOfficialLogo(acc.platform, 16);
       const handle = acc.account_handle || acc.account_name;
       const isActive = activeChannelAccountId === acc.id;
-      html += `<button class="chan-filter-chip ${isActive ? 'active' : ''}" data-chan="${acc.platform.toLowerCase()}" data-account-id="${acc.id}">${icon}: ${escapeHtml(handle)}</button>`;
+      html += `<button class="chan-filter-chip ${isActive ? 'active' : ''}" data-chan="${acc.platform.toLowerCase()}" data-account-id="${acc.id}">
+        ${logo} <span style="margin-left:4px;">${escapeHtml(handle)}</span>
+      </button>`;
     });
 
     container.innerHTML = html;
@@ -717,37 +761,35 @@ document.addEventListener('DOMContentLoaded', () => {
       channelsGrid.innerHTML = `
         <div class="empty-state" style="grid-column: 1 / -1;">
           <span class="empty-icon">🌐</span>
-          <p>Nessun canale collegato a questo profilo.<br>Clicca su "Connetti Account Social" per collegare Instagram, Facebook, TikTok o LinkedIn.</p>
+          <p>Nessun canale collegato a questo profilo.<br>Clicca su "Connetti Canale" per collegare Instagram, Facebook, TikTok, LinkedIn o Threads.</p>
         </div>
       `;
       return;
     }
 
-    const platformIcons = {
-      instagram: '📸 Instagram',
-      facebook: '📘 Facebook',
-      threads: '🧵 Threads',
-      linkedin: '💼 LinkedIn',
-      tiktok: '🎵 TikTok',
-      x: '🐦 X',
-    };
-
-    channelsGrid.innerHTML = accounts.map(acc => `
-      <div class="channel-card">
-        <div class="channel-card-top">
-          <span class="channel-badge">${platformIcons[acc.platform] || acc.platform}</span>
-          <span class="channel-status ${acc.status}">${acc.status === 'connected' ? '● Collegato' : 'Disconnesso'}</span>
+    channelsGrid.innerHTML = accounts.map(acc => {
+      const logo = getPlatformOfficialLogo(acc.platform, 24);
+      const platformName = acc.platform.charAt(0).toUpperCase() + acc.platform.slice(1);
+      return `
+        <div class="channel-card">
+          <div class="channel-card-top">
+            <div style="display:flex;align-items:center;gap:0.55rem;">
+              ${logo}
+              <span class="channel-badge">${escapeHtml(platformName)}</span>
+            </div>
+            <span class="channel-status ${acc.status}">${acc.status === 'connected' ? '● Collegato' : 'Disconnesso'}</span>
+          </div>
+          <div>
+            <div class="channel-name">${escapeHtml(acc.account_name)}</div>
+            <div class="channel-handle">@${escapeHtml(acc.account_handle.replace(/^@/, ''))}</div>
+          </div>
+          <div class="channel-notes">${escapeHtml(acc.notes || 'Canale configurato per questo profilo')}</div>
+          <div class="channel-card-bottom">
+            <button class="btn btn-ghost btn-sm" onclick="window.disconnectAccount('${acc.id}')">Disconnetti</button>
+          </div>
         </div>
-        <div>
-          <div class="channel-name">${escapeHtml(acc.account_name)}</div>
-          <div class="channel-handle">${escapeHtml(acc.account_handle)}</div>
-        </div>
-        <div class="channel-notes">${escapeHtml(acc.notes || 'Nessuna nota specificata')}</div>
-        <div class="channel-card-bottom">
-          <button class="btn btn-ghost btn-sm" onclick="window.disconnectAccount('${acc.id}')">Disconnetti</button>
-        </div>
-      </div>
-    `).join('');
+      `;
+    }).join('');
   }
 
   window.disconnectAccount = async (accId) => {
@@ -778,9 +820,56 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btnConnectFacebook) btnConnectFacebook.addEventListener('click', initiateFacebookOAuth);
   if (btnConnectFacebookModal) btnConnectFacebookModal.addEventListener('click', initiateFacebookOAuth);
 
-  btnOpenConnectModal.addEventListener('click', () => connectAccountModal.classList.remove('hidden'));
-  btnCloseConnectModal.addEventListener('click', () => connectAccountModal.classList.add('hidden'));
-  btnCancelConnectModal.addEventListener('click', () => connectAccountModal.classList.add('hidden'));
+  // Channel Hub Modal Handlers
+  if (btnOpenConnectHubModal) {
+    btnOpenConnectHubModal.addEventListener('click', () => {
+      if (!activeProfile) {
+        showToast('⚠️ Seleziona prima un profilo cliente a cui collegare i canali', 'error');
+        return;
+      }
+      connectChannelHubModal.classList.remove('hidden');
+    });
+  }
+  if (btnCloseChannelHubModal) {
+    btnCloseChannelHubModal.addEventListener('click', () => {
+      connectChannelHubModal.classList.add('hidden');
+    });
+  }
+  if (btnHubActionMeta) {
+    btnHubActionMeta.addEventListener('click', () => {
+      connectChannelHubModal.classList.add('hidden');
+      initiateFacebookOAuth();
+    });
+  }
+  if (btnHubActionTikTok) {
+    btnHubActionTikTok.addEventListener('click', () => {
+      connectChannelHubModal.classList.add('hidden');
+      if (connectTikTokModal) connectTikTokModal.classList.remove('hidden');
+    });
+  }
+  if (btnHubActionLinkedIn) {
+    btnHubActionLinkedIn.addEventListener('click', () => {
+      connectChannelHubModal.classList.add('hidden');
+      if (connectLinkedInModal) connectLinkedInModal.classList.remove('hidden');
+    });
+  }
+  if (btnHubActionThreads) {
+    btnHubActionThreads.addEventListener('click', () => {
+      connectChannelHubModal.classList.add('hidden');
+      if (connectThreadsModal) connectThreadsModal.classList.remove('hidden');
+    });
+  }
+  if (btnHubOpenManual) {
+    btnHubOpenManual.addEventListener('click', () => {
+      connectChannelHubModal.classList.add('hidden');
+      if (connectAccountModal) connectAccountModal.classList.remove('hidden');
+    });
+  }
+
+  // Legacy Manual Connect Modal Handlers
+  if (btnOpenConnectModal) btnOpenConnectModal.addEventListener('click', () => connectAccountModal.classList.remove('hidden'));
+  if (btnCloseConnectModal) btnCloseConnectModal.addEventListener('click', () => connectAccountModal.classList.add('hidden'));
+  if (btnCancelConnectModal) btnCancelConnectModal.addEventListener('click', () => connectAccountModal.classList.add('hidden'));
 
   // Connect TikTok Business Modal Handler
   if (btnOpenTikTokModal) {
@@ -794,6 +883,106 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   if (btnCloseTikTokModal) btnCloseTikTokModal.addEventListener('click', () => connectTikTokModal.classList.add('hidden'));
   if (btnCancelTikTokModal) btnCancelTikTokModal.addEventListener('click', () => connectTikTokModal.classList.add('hidden'));
+
+  // Connect LinkedIn Modal Handlers
+  if (btnCloseLinkedInModal) btnCloseLinkedInModal.addEventListener('click', () => connectLinkedInModal.classList.add('hidden'));
+  if (btnCancelLinkedInModal) btnCancelLinkedInModal.addEventListener('click', () => connectLinkedInModal.classList.add('hidden'));
+
+  if (connectLinkedInForm) {
+    connectLinkedInForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!activeProfile) return;
+
+      const submitBtn = document.getElementById('btnSubmitLinkedIn');
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = '⏳ Salvataggio...';
+      }
+
+      const payload = {
+        platform: 'linkedin',
+        account_name: liAccountName.value.trim(),
+        account_handle: liAccountHandle.value.trim().replace(/^@/, ''),
+        access_token: liAccessToken.value.trim(),
+        external_account_id: liOrganizationId.value.trim(),
+        notes: 'LinkedIn Company Page (Community API)',
+      };
+
+      try {
+        const res = await apiFetch(`/api/profiles/${activeProfile.id}/accounts`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast('💼 Pagina LinkedIn collegata con successo!', 'success');
+          connectLinkedInModal.classList.add('hidden');
+          connectLinkedInForm.reset();
+          await loadActiveProfileChannels();
+        } else {
+          showToast(`❌ Errore: ${data.error}`, 'error');
+        }
+      } catch (err) {
+        showToast('❌ Errore di rete durante il salvataggio LinkedIn', 'error');
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = '💼 Salva e Collega LinkedIn';
+        }
+      }
+    });
+  }
+
+  // Connect Threads Modal Handlers
+  if (btnCloseThreadsModal) btnCloseThreadsModal.addEventListener('click', () => connectThreadsModal.classList.add('hidden'));
+  if (btnCancelThreadsModal) btnCancelThreadsModal.addEventListener('click', () => connectThreadsModal.classList.add('hidden'));
+
+  if (connectThreadsForm) {
+    connectThreadsForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!activeProfile) return;
+
+      const submitBtn = document.getElementById('btnSubmitThreads');
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = '⏳ Salvataggio...';
+      }
+
+      const payload = {
+        platform: 'threads',
+        account_name: thAccountName.value.trim(),
+        account_handle: thAccountHandle.value.trim().replace(/^@/, ''),
+        access_token: thAccessToken.value.trim(),
+        external_account_id: thUserId.value.trim(),
+        notes: 'Threads Official Account (Threads API)',
+      };
+
+      try {
+        const res = await apiFetch(`/api/profiles/${activeProfile.id}/accounts`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast('🧵 Account Threads collegato con successo!', 'success');
+          connectThreadsModal.classList.add('hidden');
+          connectThreadsForm.reset();
+          await loadActiveProfileChannels();
+        } else {
+          showToast(`❌ Errore: ${data.error}`, 'error');
+        }
+      } catch (err) {
+        showToast('❌ Errore di rete durante il salvataggio Threads', 'error');
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = '🧵 Salva e Collega Threads';
+        }
+      }
+    });
+  }
 
   if (connectTikTokForm) {
     connectTikTokForm.addEventListener('submit', async (e) => {
@@ -1150,17 +1339,9 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    const platformIcons = {
-      instagram: '📸 Instagram',
-      facebook: '📘 Facebook',
-      threads: '🧵 Threads',
-      linkedin: '💼 LinkedIn',
-      tiktok: '🎵 TikTok',
-      x: '🐦 X',
-    };
-
     feedList.innerHTML = comments.map(c => {
-      const icon = platformIcons[c.platform.toLowerCase()] || `🌐 ${c.platform}`;
+      const logo = getPlatformOfficialLogo(c.platform, 18);
+      const platformName = (c.platform || '').charAt(0).toUpperCase() + (c.platform || '').slice(1);
       const statusLabels = {
         pending: 'In Attesa Approvazione',
         approved: 'Approvato',
@@ -1184,15 +1365,23 @@ document.addEventListener('DOMContentLoaded', () => {
       const initial = (authorDisplayName.charAt(0) || '👤').toUpperCase();
       const postSnippetText = c.post_snippet ? `su "${escapeHtml(c.post_snippet)}"` : '';
 
-            const isErrorReply = Boolean(displayReply && displayReply.startsWith('[Errore AI'));
-            const isDraftReply = Boolean(displayReply && displayReply.startsWith('[Bozza]'));
+      const isErrorReply = Boolean(displayReply && displayReply.startsWith('[Errore AI'));
+      const isDraftReply = Boolean(displayReply && displayReply.startsWith('[Bozza]'));
 
-            return `
+      return `
         <div class="feed-card" id="card-${c.id}">
           <div>
             <div class="feed-card-header">
-              <span class="card-platform-badge">${icon}</span>
-              <span class="status-badge ${c.status}">${statusLabels[c.status] || c.status}</span>
+              <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+                <span class="card-platform-badge" style="display:inline-flex;align-items:center;gap:0.4rem;">
+                  ${logo}
+                  <span style="font-weight:600;">${escapeHtml(platformName)}</span>
+                </span>
+                <span class="status-badge ${c.status}">${statusLabels[c.status] || c.status}</span>
+              </div>
+              <button class="btn-card-action reject btn-delete-comment" style="padding:0.25rem 0.65rem;font-size:0.75rem;border-radius:var(--radius-xs);display:flex;align-items:center;gap:0.35rem;" onclick="window.deleteComment('${c.id}')" title="Elimina definitivamente questo commento dall'inbox">
+                🗑️ Elimina
+              </button>
             </div>
 
             <div class="feed-author-row">
@@ -1411,6 +1600,25 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     } catch (err) {
       showToast('❌ Errore', 'error');
+    }
+  };
+
+  window.deleteComment = async (id) => {
+    if (!confirm('Sei sicuro di voler eliminare definitivamente questo commento dall\'inbox? L\'operazione non è reversibile.')) {
+      return;
+    }
+    try {
+      showToast('Eliminazione commento in corso...', 'info');
+      const res = await apiFetch(`/api/comments/${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        showToast('🗑️ Commento eliminato definitivamente dall\'inbox', 'success');
+        await loadActiveProfileComments();
+      } else {
+        showToast(`❌ Errore: ${data.error}`, 'error');
+      }
+    } catch (err) {
+      showToast('❌ Errore durante l\'eliminazione del commento', 'error');
     }
   };
 

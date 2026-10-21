@@ -46,7 +46,6 @@ export class TelegramBotService {
       threads: '🧵 Threads',
       linkedin: '💼 LinkedIn',
       tiktok: '🎵 TikTok',
-      x: '🐦 X',
     };
 
     const icon = platformIcons[comment.platform.toLowerCase()] || `🌐 ${comment.platform}`;

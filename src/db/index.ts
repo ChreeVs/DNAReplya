@@ -495,6 +495,13 @@ export const dbRepository = {
     });
   },
 
+  async deleteComment(id: string): Promise<void> {
+    await db.execute({
+      sql: 'DELETE FROM comments WHERE id = ?',
+      args: [id],
+    });
+  },
+
   // Learning Memory (Few-Shot Store isolated per profile)
   async saveApprovedReply(data: {
     profile_id: string;

@@ -58,6 +58,9 @@
       <button class="nav-tab" data-tab="tab-byok" id="tabBtnBYOK">
         <span class="tab-icon">🔑</span> Chiavi LLM (BYOK)
       </button>
+      <button class="nav-tab" data-tab="tab-docs" id="tabBtnDocs">
+        <span class="tab-icon">📖</span> Documentazione
+      </button>
 
       <!-- User Session Area -->
       <div class="user-session-wrapper" id="userSessionWrapper">
@@ -155,19 +158,11 @@
         <div class="panel-header">
           <div>
             <h3>🌐 Account Social del Cliente</h3>
-            <p class="panel-desc">Gestisci gli account collegati a questo profilo (Instagram, Facebook, TikTok, LinkedIn, Threads, X).</p>
+            <p class="panel-desc">Gestisci gli account collegati a questo profilo (Instagram, Facebook, TikTok, LinkedIn, Threads).</p>
           </div>
           <div class="header-actions">
-            <button class="btn btn-facebook" id="btnConnectFacebook">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
-              Connetti con Facebook
-            </button>
-            <button class="btn btn-tiktok" id="btnOpenTikTokModal">
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64c.298-.002.595.042.88.13V9.4a6.33 6.33 0 0 0-1-.08A6.34 6.34 0 0 0 3 15.66a6.34 6.34 0 0 0 10.82 4.49 6.27 6.27 0 0 0 1.86-4.49V8.7a8.28 8.28 0 0 0 4.91 1.62v-3.63z"/></svg>
-              Connetti TikTok
-            </button>
-            <button class="btn btn-secondary" id="btnOpenConnectModal">
-              <span class="btn-icon">➕</span> Manuale
+            <button class="btn btn-primary" id="btnOpenConnectHubModal" style="display: inline-flex; align-items: center; gap: 0.55rem; font-weight: 700; padding: 0.75rem 1.4rem;">
+              <span style="font-size: 1.1rem; line-height: 1;">➕</span> Connetti Canale...
             </button>
           </div>
         </div>
@@ -446,6 +441,366 @@
           </form>
         </div>
       </div>
+    <!-- TAB 6: DOCUMENTAZIONE & GUIDA OPERATIVA -->
+    <section id="tab-docs" class="tab-pane">
+      <div class="docs-wrapper max-w-5xl">
+        <!-- Docs Header Hero -->
+        <div class="docs-hero-panel">
+          <div class="docs-hero-content">
+            <div class="docs-hero-badge">📖 Guida Ufficiale & Knowledge Base</div>
+            <h2>Documentazione Operativa DNAReplya</h2>
+            <p class="docs-hero-desc">
+              Tutto ciò che serve per configurare il database persistente, collegare i canali social (Meta, TikTok, LinkedIn, Threads), comprendere i flussi AI e risolvere istantaneamente gli errori più comuni.
+            </p>
+          </div>
+        </div>
+
+        <!-- Quick Jump Navigation -->
+        <div class="docs-quick-nav">
+          <a href="#doc-turso" class="docs-nav-chip">💾 Database Persistente (Turso)</a>
+          <a href="#doc-tiktok" class="docs-nav-chip">🎵 Allaccio TikTok Business</a>
+          <a href="#doc-meta" class="docs-nav-chip">📘 Allaccio Meta (IG & FB)</a>
+          <a href="#doc-linkedin-threads" class="docs-nav-chip">💼 LinkedIn & Threads</a>
+          <a href="#doc-troubleshooting" class="docs-nav-chip">⚠️ Errori Comuni & Soluzioni</a>
+          <a href="#doc-telegram" class="docs-nav-chip">🤖 Bot Telegram</a>
+          <a href="#doc-memory" class="docs-nav-chip">🧠 Memoria di Apprendimento</a>
+        </div>
+
+        <!-- 1. TURSO PERSISTENT DATABASE -->
+        <div id="doc-turso" class="docs-card">
+          <div class="docs-card-header">
+            <span class="docs-icon">💾</span>
+            <div>
+              <h3>1. Perché i canali si scollegano? Setup Database Persistente (Turso Cloud)</h3>
+              <p class="docs-card-sub">Risolvi definitivamente la perdita dei canali collegati e delle memorie ad ogni deploy di Render.</p>
+            </div>
+          </div>
+          <div class="docs-card-body">
+            <div class="docs-alert-warning">
+              ⚠️ <b>Causa del problema (Filesystem Effimero di Render):</b><br>
+              Render (e servizi hosting simili) distrugge e ricrea il container del server ad ogni aggiornamento di codice o riavvio. Il database SQLite locale (<code>data/dnareplya.db</code>) viene cancellato insieme al container.
+            </div>
+
+            <h4 class="mt-4 mb-2">Come risolvere in 3 minuti con Turso (Gratuito per sempre):</h4>
+            <div class="docs-step-list">
+              <div class="docs-step-item">
+                <span class="docs-step-num">1</span>
+                <div>
+                  <strong>Registrati su Turso:</strong>
+                  <p>Vai su <a href="https://turso.tech" target="_blank" class="docs-link">turso.tech</a> e accedi gratuitamente con il tuo account GitHub.</p>
+                </div>
+              </div>
+              <div class="docs-step-item">
+                <span class="docs-step-num">2</span>
+                <div>
+                  <strong>Crea il Database Cloud:</strong>
+                  <p>Clicca su <b>"Create Database"</b>, assegna un nome (es. <code>dnareplya-db</code>) e seleziona la regione <b>Frankfurt (fra)</b>.</p>
+                </div>
+              </div>
+              <div class="docs-step-item">
+                <span class="docs-step-num">3</span>
+                <div>
+                  <strong>Recupera URL e Token:</strong>
+                  <p>Dalla dashboard di Turso copia l'URL (es. <code>libsql://dnareplya-db-username.turso.io</code>) e clicca su <b>"Generate Token"</b> per copiare l'Auth Token.</p>
+                </div>
+              </div>
+              <div class="docs-step-item">
+                <span class="docs-step-num">4</span>
+                <div>
+                  <strong>Aggiungi su Render:</strong>
+                  <p>Vai sulla dashboard di <a href="https://dashboard.render.com" target="_blank" class="docs-link">Render</a> > Seleziona <code>dnareplya</code> > Clicca su <b>Environment</b> (barra laterale a sinistra) e aggiungi:</p>
+                  <div class="docs-code-snippet">
+                    <div><code>TURSO_DATABASE_URL</code> = <code>libsql://dnareplya-db-username.turso.io</code></div>
+                    <div><code>TURSO_AUTH_TOKEN</code> = <code>eyJhbGciOi... (il tuo token generato)</code></div>
+                  </div>
+                  <p class="mt-2 text-dim text-xs">Premi <b>Save Changes</b>: Render si collegherà automaticamente a Turso e tutti i canali, commenti e memorie rimarranno salvati per sempre!</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. TIKTOK CONNECTION GUIDE -->
+        <div id="doc-tiktok" class="docs-card">
+          <div class="docs-card-header">
+            <span class="docs-icon">🎵</span>
+            <div>
+              <h3>2. Guida all'Allaccio di TikTok Business (Uso Interno)</h3>
+              <p class="docs-card-sub">Come collegare il profilo TikTok aziendale per leggere e rispondere ufficialmente ai commenti.</p>
+            </div>
+          </div>
+          <div class="docs-card-body">
+            <div class="docs-step-list">
+              <div class="docs-step-item">
+                <span class="docs-step-num">1</span>
+                <div>
+                  <strong>Verifica Account Aziendale (Business Account):</strong>
+                  <p>Nell'app TikTok dello smartphone, apri il profilo > <b>Menu (in alto a destra) > Impostazioni e Privacy > Account > Passa ad account aziendale</b> (il passaggio è gratuito e immediato).</p>
+                </div>
+              </div>
+              <div class="docs-step-item">
+                <span class="docs-step-num">2</span>
+                <div>
+                  <strong>Accedi al Portale Sviluppatori TikTok for Business:</strong>
+                  <p>Vai su <a href="https://business-api.tiktok.com/portal/" target="_blank" class="docs-link">TikTok for Business Developer Portal</a> e accedi con l'account aziendale.</p>
+                </div>
+              </div>
+              <div class="docs-step-item">
+                <span class="docs-step-num">3</span>
+                <div>
+                  <strong>Crea un'Applicazione Interna:</strong>
+                  <p>Crea una nuova app selezionando la tipologia <b>"In-house / Internal tool"</b> o sviluppo privato. In questa modalità non è richiesta alcuna verifica pubblica o revisione per account esterni.</p>
+                </div>
+              </div>
+              <div class="docs-step-item">
+                <span class="docs-step-num">4</span>
+                <div>
+                  <strong>Abilita i Permessi Commenti e Genera il Token:</strong>
+                  <p>Richiedi o seleziona gli scope: <code>comment.list</code> (lettura commenti) e <code>comment.list.manage</code> (pubblicazione risposte e moderazione). Genera l'<b>Access Token Bearer</b> a lunga durata per il tuo account.</p>
+                </div>
+              </div>
+              <div class="docs-step-item">
+                <span class="docs-step-num">5</span>
+                <div>
+                  <strong>Collega su DNAReplya:</strong>
+                  <p>Nella scheda <b>Canali Social</b>, clicca su <b>➕ Connetti Canale... > TikTok Business</b>, inserisci l'handle del profilo (@brand) e incolla il token generato.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. META CONNECTION GUIDE -->
+        <div id="doc-meta" class="docs-card">
+          <div class="docs-card-header">
+            <span class="docs-icon">📘</span>
+            <div>
+              <h3>3. Guida all'Allaccio di Meta (Instagram Business & Pagine Facebook)</h3>
+              <p class="docs-card-sub">Integrazione con Facebook Graph API e ricezione webhook in tempo reale.</p>
+            </div>
+          </div>
+          <div class="docs-card-body">
+            <div class="docs-step-list">
+              <div class="docs-step-item">
+                <span class="docs-step-num">1</span>
+                <div>
+                  <strong>Requisiti Account:</strong>
+                  <p>La Pagina Facebook deve essere collegata all'Account Professionale Instagram (Business o Creator) all'interno del <i>Meta Business Suite</i>. L'utente che esegue l'accesso deve essere <b>Amministratore</b> della Pagina.</p>
+                </div>
+              </div>
+              <div class="docs-step-item">
+                <span class="docs-step-num">2</span>
+                <div>
+                  <strong>Connessione con 1 Click:</strong>
+                  <p>Clicca su <b>➕ Connetti Canale... > Connetti con Meta</b>. Verrai reindirizzato su Facebook: accetta tutte le autorizzazioni richieste.</p>
+                </div>
+              </div>
+              <div class="docs-step-item">
+                <span class="docs-step-num">3</span>
+                <div>
+                  <strong>Selezione Canali per il Profilo:</strong>
+                  <p>Al termine del login, la griglia a 2 colonne ti permetterà di selezionare esattamente <b>1 Pagina Facebook</b> e <b>1 Profilo Instagram</b> da associare al cliente attivo.</p>
+                </div>
+              </div>
+              <div class="docs-step-item">
+                <span class="docs-step-num">4</span>
+                <div>
+                  <strong>Configurazione Webhook (opzionale per tempo reale):</strong>
+                  <p>Su Meta for Developers > Webhooks > Webhooks Prodotto:</p>
+                  <div class="docs-code-snippet">
+                    <div><b>Callback URL:</b> <code>https://dnareplya.onrender.com/api/webhooks/meta</code></div>
+                    <div><b>Verify Token:</b> <code>dnareplya_meta_verify_token_secure</code></div>
+                    <div><b>Campi sottoscritti:</b> <code>feed</code> (per Facebook) e <code>comments</code> (per Instagram)</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. LINKEDIN & THREADS GUIDE -->
+        <div id="doc-linkedin-threads" class="docs-card">
+          <div class="docs-card-header">
+            <span class="docs-icon">💼</span>
+            <div>
+              <h3>4. Guida a LinkedIn Company Pages & Threads</h3>
+              <p class="docs-card-sub">Monitoraggio e risposte professionali per i canali secondari.</p>
+            </div>
+          </div>
+          <div class="docs-card-body">
+            <div class="docs-grid-2col">
+              <div class="docs-subcard">
+                <div class="flex-align-gap mb-2">
+                  <span class="font-bold">💼 LinkedIn Company Pages</span>
+                </div>
+                <p class="text-sm text-dim">
+                  Per rispondere ai commenti sui post di una Pagina LinkedIn aziendale:
+                </p>
+                <ul class="docs-bullet-list">
+                  <li>Registra un'app su <a href="https://www.linkedin.com/developers/" target="_blank" class="docs-link">LinkedIn Developer Portal</a>.</li>
+                  <li>Associa la Pagina Aziendale e richiedi i prodotti <i>Share on LinkedIn</i> e <i>Sign In with LinkedIn</i>.</li>
+                  <li>I permessi richiesti per le risposte ai post sono <code>w_organization_social</code> e <code>r_organization_social</code>.</li>
+                  <li>Inserisci l'Access Token e l'Organization ID nel modale dedicato.</li>
+                </ul>
+              </div>
+
+              <div class="docs-subcard">
+                <div class="flex-align-gap mb-2">
+                  <span class="font-bold">🧵 Threads Official</span>
+                </div>
+                <p class="text-sm text-dim">
+                  Threads utilizza le API ufficiali introdotte da Meta nel 2024:
+                </p>
+                <ul class="docs-bullet-list">
+                  <li>Disponibile all'interno della stessa Meta Developer App con il caso d'uso <i>Threads API</i>.</li>
+                  <li>Permessi richiesti: <code>threads_basic</code>, <code>threads_content_publish</code> e <code>threads_read_replies</code>.</li>
+                  <li>Inserisci l'Access Token e l'handle @username nel modale Threads.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 5. TROUBLESHOOTING & COMMON ERRORS -->
+        <div id="doc-troubleshooting" class="docs-card">
+          <div class="docs-card-header">
+            <span class="docs-icon">⚠️</span>
+            <div>
+              <h3>5. Risoluzione degli Errori più Comuni (Troubleshooting)</h3>
+              <p class="docs-card-sub">Cosa fare quando un'API restituisce un errore o una risposta non viene inviata.</p>
+            </div>
+          </div>
+          <div class="docs-card-body">
+            <div class="troubleshoot-accordion">
+              <div class="troubleshoot-item">
+                <div class="troubleshoot-title">❌ Errore Claude Anthropic (400): `temperature` is deprecated for this model</div>
+                <div class="troubleshoot-content">
+                  <b>Causa:</b> I modelli Claude più recenti (come Claude Opus 5.5 e Claude 3.7 con reasoning adattivo) considerano deprecato il parametro <code>temperature</code>.<br>
+                  <b>Soluzione:</b> Già risolto in DNAReplya. Il parametro è stato omesso e il sistema estrae in automatico solo i blocchi di testo finali, ignorando i token interni di pensiero (thinking).
+                </div>
+              </div>
+
+              <div class="troubleshoot-item">
+                <div class="troubleshoot-title">❌ Errore Gemini (404): models/gemini-1.5-flash is not found</div>
+                <div class="troubleshoot-content">
+                  <b>Causa:</b> Le nuove chiavi API generate su Google AI Studio abilitano di default i modelli <code>gemini-2.0-flash</code> e disattivano gli endpoint legacy.<br>
+                  <b>Soluzione:</b> DNAReplya include un motore di fallback intelligente con <code>ModelService.ListModels</code> che trova in automatico il modello Gemini attivo per la tua chiave.
+                </div>
+              </div>
+
+              <div class="troubleshoot-item">
+                <div class="troubleshoot-title">❌ Errore approvazione: Cannot read properties of undefined (reading 'final_reply')</div>
+                <div class="troubleshoot-content">
+                  <b>Causa:</b> La chiamata di approvazione veniva inviata senza header <code>Content-Type: application/json</code> o con body vuoto.<br>
+                  <b>Soluzione:</b> Risolto con validazione sicura (<code>req.body?.final_reply</code>) e invio del payload standardizzato dal frontend.
+                </div>
+              </div>
+
+              <div class="troubleshoot-item">
+                <div class="troubleshoot-title">❌ Errore Meta: (#200) Permissions error / Requires page admin</div>
+                <div class="troubleshoot-content">
+                  <b>Causa:</b> L'utente che ha effettuato l'accesso non ha il ruolo di Amministratore della Pagina Facebook collegata, oppure non sono stati concessi tutti i permessi nelle checkbox di Meta.<br>
+                  <b>Soluzione:</b> Vai su Facebook > Impostazioni Pagina > Accesso alla Pagina e assicurati di avere "Accesso con controllo completo". Poi ripeti "Connetti con Meta" in DNAReplya.
+                </div>
+              </div>
+
+              <div class="troubleshoot-item">
+                <div class="troubleshoot-title">❌ I canali collegati si disconnettono da soli dopo qualche tempo</div>
+                <div class="troubleshoot-content">
+                  <b>Causa:</b> I token di accesso a breve termine di Meta scadono dopo 1-2 ore, oppure Render è stato riavviato senza un database persistente.<br>
+                  <b>Soluzione:</b> DNAReplya converte automaticamente i token utente in <b>Page Access Tokens a lunga durata (60 giorni / illimitati)</b>. Per evitare che il database si resetti al riavvio, imposta <b>Turso Cloud</b> seguendo la sezione 1 di questa guida.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 6. TELEGRAM BOT SETUP -->
+        <div id="doc-telegram" class="docs-card">
+          <div class="docs-card-header">
+            <span class="docs-icon">🤖</span>
+            <div>
+              <h3>6. Notifiche & Approvazione Rapida su Telegram</h3>
+              <p class="docs-card-sub">Ricevi ogni commento in arrivo sul telefono con pulsanti di approvazione immediata.</p>
+            </div>
+          </div>
+          <div class="docs-card-body">
+            <p class="text-sm text-dim mb-3">
+              Puoi configurare un Bot Telegram Globale (per tutta l'agenzia) oppure un bot e chat dedicati per ciascun cliente.
+            </p>
+            <div class="docs-step-list">
+              <div class="docs-step-item">
+                <span class="docs-step-num">1</span>
+                <div>
+                  <strong>Crea il Bot:</strong>
+                  <p>Apri Telegram, cerca <b>@BotFather</b> e invia il comando <code>/newbot</code>. Assegna un nome e un username univoco (es. <code>DNAReplyaBot</code>). Copia il <b>Token HTTP API</b> fornito.</p>
+                </div>
+              </div>
+              <div class="docs-step-item">
+                <span class="docs-step-num">2</span>
+                <div>
+                  <strong>Avvia la Chat con il Bot:</strong>
+                  <p>Cerca il tuo bot su Telegram e premi <b>AVVIA (/start)</b>. Se vuoi ricevere le notifiche in un gruppo con il team del cliente, aggiungi il bot al gruppo.</p>
+                </div>
+              </div>
+              <div class="docs-step-item">
+                <span class="docs-step-num">3</span>
+                <div>
+                  <strong>Recupera il Chat ID:</strong>
+                  <p>Invia un messaggio a <b>@userinfobot</b> su Telegram: ti restituirà il tuo <code>Id</code> numerico (es. <code>123456789</code>). Se usi un gruppo, l'ID inizierà con <code>-100...</code>.</p>
+                </div>
+              </div>
+              <div class="docs-step-item">
+                <span class="docs-step-num">4</span>
+                <div>
+                  <strong>Come approvare le risposte dal telefono:</strong>
+                  <p>Quando arriva un commento, il bot invia il testo del follower e la risposta proposta dall'AI con 4 pulsanti:</p>
+                  <div class="flex-align-gap mt-2 flex-wrap">
+                    <span class="badge-sample green">🟢 Approva e Invia</span>
+                    <span class="badge-sample blue">🔄 Rigenera</span>
+                    <span class="badge-sample cyan">✏️ Modifica</span>
+                    <span class="badge-sample rose">❌ Scarta</span>
+                  </div>
+                  <p class="mt-2 text-xs text-dim">Premendo "Modifica", basta inviare il testo corretto in chat al bot: verrà pubblicato sui social e salvato nella memoria di apprendimento del cliente!</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 7. FEW-SHOT LEARNING MEMORY -->
+        <div id="doc-memory" class="docs-card">
+          <div class="docs-card-header">
+            <span class="docs-icon">🧠</span>
+            <div>
+              <h3>7. Motore di Apprendimento AI (Few-Shot Store Isolato)</h3>
+              <p class="docs-card-sub">Come il sistema impara e replica alla perfezione il tono di voce di ogni singolo brand.</p>
+            </div>
+          </div>
+          <div class="docs-card-body">
+            <p class="text-sm text-dim leading-relaxed">
+              DNAReplya non si affida solo a istruzioni generiche di tono (come "sii simpatico" o "sii formale"), ma utilizza un'architettura <b>Few-Shot In-Context Learning</b> isolata a livello di singolo cliente:
+            </p>
+            <div class="memory-explainer-grid mt-3">
+              <div class="mem-exp-box">
+                <span class="mem-exp-icon">📥</span>
+                <strong>1. Memorizzazione Automatica</strong>
+                <p>Ogni volta che approvi o modifichi una risposta (da Dashboard o Telegram), la coppia <i>[Commento Follower ➔ Risposta Ufficiale]</i> viene salvata nella memoria del profilo.</p>
+              </div>
+              <div class="mem-exp-box">
+                <span class="mem-exp-icon">⚡</span>
+                <strong>2. Iniezione nel Prompt AI</strong>
+                <p>Quando arriva un nuovo commento, l'AI consulta gli ultimi esempi reali approvati per quel cliente e modella la sintassi, le emoji e lo stile esattamente su quegli esempi.</p>
+              </div>
+              <div class="mem-exp-box">
+                <span class="mem-exp-icon">🗑️</span>
+                <strong>3. Controllo Totale</strong>
+                <p>Nella scheda <b>Memoria AI</b> puoi visualizzare tutti gli esempi storici ed eliminare con il tasto <code>🗑️ Elimina</code> quelli obsoleti o superati.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </section>
   </main>
 
@@ -492,6 +847,230 @@
     </div>
   </div>
 
+  <!-- MODAL: HUB DI CONNESSIONE CANALI (SELEZIONE PIATTAFORME) -->
+  <div id="connectChannelHubModal" class="modal-overlay hidden">
+    <div class="modal-card channel-hub-modal-card">
+      <div class="modal-header">
+        <div>
+          <div style="display: flex; align-items: center; gap: 0.65rem;">
+            <span style="font-size: 1.5rem;">🌐</span>
+            <div>
+              <h3>Connetti Canale Social</h3>
+              <p class="panel-desc" style="margin-top: 0.2rem;">Seleziona la piattaforma da collegare per il profilo attivo.</p>
+            </div>
+          </div>
+        </div>
+        <button class="modal-close" id="btnCloseChannelHubModal">&times;</button>
+      </div>
+
+      <div class="modal-body" style="padding-top: 1rem;">
+        <div class="channel-hub-grid">
+          <!-- Card 1: Meta (Facebook & Instagram) -->
+          <div class="hub-platform-card meta-card">
+            <div class="hub-card-header">
+              <div class="hub-logos-cluster">
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="#1877F2"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                <svg width="30" height="30" viewBox="0 0 24 24">
+                  <radialGradient id="igHubGrad" cx="0.2" cy="1" r="1">
+                    <stop offset="0%" stop-color="#ffd521"/>
+                    <stop offset="5%" stop-color="#ffd521"/>
+                    <stop offset="50%" stop-color="#f50000"/>
+                    <stop offset="100%" stop-color="#b900b4"/>
+                  </radialGradient>
+                  <rect width="24" height="24" rx="6" fill="url(#igHubGrad)"/>
+                  <path fill="#ffffff" d="M12 7.006a4.994 4.994 0 1 0 0 9.988 4.994 4.994 0 0 0 0-9.988zm0 8.238a3.244 3.244 0 1 1 0-6.488 3.244 3.244 0 0 1 0 6.488zm6.406-8.475a1.169 1.169 0 1 1-2.338 0 1.169 1.169 0 0 1 2.338 0zM12 4.167c2.551 0 2.853.01 3.861.056 2.766.126 4.05 1.42 4.176 4.176.046 1.008.056 1.31.056 3.861s-.01 2.853-.056 3.861c-.126 2.756-1.41 4.05-4.176 4.176-1.008.046-1.31.056-3.861.056s-2.853-.01-3.861-.056c-2.766-.126-4.05-1.42-4.176-4.176-.046-1.008-.056-1.31-.056-3.861s.01-2.853.056-3.861c.126-2.756 1.41-4.05 4.176-4.176 1.008-.046 1.31-.056 3.861-.056zM12 2.417c-2.595 0-2.92.011-3.938.057-3.92.179-6.089 2.348-6.268 6.268-.046 1.018-.057 1.343-.057 3.938s.011 2.92.057 3.938c.179 3.92 2.348 6.089 6.268 6.268 1.018.046 1.343.057 3.938.057s2.92-.011 3.938-.057c3.92-.179 6.089-2.348 6.268-6.268.046-1.018.057-1.343.057-3.938s-.011-2.92-.057-3.938c-.179-3.92-2.348-6.089-6.268-6.268-1.018-.046-1.343-.057-3.938-.057z"/>
+                </svg>
+              </div>
+              <span class="hub-scope-tag">1-Click OAuth</span>
+            </div>
+            <div class="hub-card-content">
+              <h4>Facebook & Instagram</h4>
+              <p>Collega Pagine Facebook e Profili Instagram aziendali tramite Login with Facebook ufficiale per ricevere e rispondere ai commenti.</p>
+            </div>
+            <div class="hub-card-footer">
+              <button type="button" class="btn btn-facebook w-full" id="btnHubActionMeta">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                Connetti con Facebook
+              </button>
+            </div>
+          </div>
+
+          <!-- Card 2: TikTok Business -->
+          <div class="hub-platform-card tiktok-card">
+            <div class="hub-card-header">
+              <svg width="34" height="34" viewBox="0 0 24 24" fill="#ffffff">
+                <rect width="24" height="24" rx="6" fill="#000000"/>
+                <path d="M16.6 5.82s.51.5 1.35.74c.83.24 1.76.15 1.76.15V9.4s-.89-.04-1.74-.32c-.85-.28-1.44-.75-1.44-.75v6.52c0 2.22-1.78 4.02-3.98 4.02-2.2 0-3.98-1.8-3.98-4.02 0-2.22 1.78-4.02 3.98-4.02.42 0 .82.07 1.2.19v2.73a1.45 1.45 0 0 0-.96-.34c-.79 0-1.44.65-1.44 1.44 0 .8.65 1.44 1.44 1.44.79 0 1.44-.64 1.44-1.44V3.88h3.37v1.94z"/>
+              </svg>
+              <span class="hub-scope-tag" style="border-color: rgba(0, 242, 254, 0.4); color: #00f2fe;">Commercial API</span>
+            </div>
+            <div class="hub-card-content">
+              <h4>TikTok Business</h4>
+              <p>Rispondi ai commenti sui video TikTok del brand tramite l'API ufficiale TikTok for Business (Uso Interno aziendale).</p>
+            </div>
+            <div class="hub-card-footer">
+              <button type="button" class="btn btn-tiktok w-full" id="btnHubActionTikTok">
+                🎵 Configura TikTok
+              </button>
+            </div>
+          </div>
+
+          <!-- Card 3: LinkedIn Company Page -->
+          <div class="hub-platform-card linkedin-card">
+            <div class="hub-card-header">
+              <svg width="34" height="34" viewBox="0 0 24 24">
+                <rect width="24" height="24" rx="5" fill="#0A66C2"/>
+                <path fill="#ffffff" d="M19 19h-3.125v-4.893c0-1.167-.023-2.67-1.626-2.67-1.629 0-1.878 1.272-1.878 2.585V19H9.246V8.95h2.999v1.374h.042c.418-.792 1.439-1.626 2.962-1.626 3.167 0 3.751 2.085 3.751 4.796V19zM6.556 7.578a1.813 1.813 0 1 1 0-3.626 1.813 1.813 0 0 1 0 3.626zM8.118 19H4.993V8.95h3.125V19z"/>
+              </svg>
+              <span class="hub-scope-tag" style="border-color: rgba(10, 102, 194, 0.4); color: #0a66c2;">Community API</span>
+            </div>
+            <div class="hub-card-content">
+              <h4>LinkedIn Company</h4>
+              <p>Collega la Pagina Aziendale LinkedIn per monitorare e rispondere alle discussioni e ai post aziendali con tono istituzionale.</p>
+            </div>
+            <div class="hub-card-footer">
+              <button type="button" class="btn btn-linkedin w-full" id="btnHubActionLinkedIn">
+                💼 Configura LinkedIn
+              </button>
+            </div>
+          </div>
+
+          <!-- Card 4: Threads Official -->
+          <div class="hub-platform-card threads-card">
+            <div class="hub-card-header">
+              <svg width="34" height="34" viewBox="0 0 24 24">
+                <rect width="24" height="24" rx="6" fill="#141414" stroke="#333" stroke-width="1"/>
+                <path fill="#ffffff" d="M12.001 2c-5.522 0-10 4.477-10 10 0 5.521 4.478 10 10 10 5.52 0 10-4.479 10-10 0-5.523-4.48-10-10-10zm3.89 12.396c-.347.165-.773.295-1.28.39a8.134 8.134 0 0 1-1.332.112c-1.884 0-3.085-.882-3.085-2.261 0-1.464 1.285-2.455 3.197-2.455.539 0 1.05.08 1.52.238.384.13.722.316 1.008.556v-.427c0-1.503-.984-2.318-2.633-2.318-.95 0-1.829.288-2.544.83l-.75-1.258c.995-.747 2.215-1.144 3.54-1.144 2.766 0 4.293 1.488 4.293 4.195v4.545h-1.627v-.989c-.104-.012-.209-.012-.307-.012zm-1.07-2.483c-.22-.132-.49-.234-.813-.306a4.43 4.43 0 0 0-.915-.098c-1.096 0-1.782.527-1.782 1.34 0 .736.608 1.22 1.637 1.22.428 0 .806-.056 1.135-.168.324-.11.572-.256.738-.435v-1.553z"/>
+              </svg>
+              <span class="hub-scope-tag" style="border-color: rgba(255, 255, 255, 0.3); color: #e2e8f0;">Threads API</span>
+            </div>
+            <div class="hub-card-content">
+              <h4>Threads Official</h4>
+              <p>Collega l'account Threads del brand per rispondere alle discussioni e alle conversazioni testuali in rapida crescita.</p>
+            </div>
+            <div class="hub-card-footer">
+              <button type="button" class="btn btn-secondary w-full" id="btnHubActionThreads" style="font-weight: 700;">
+                🧵 Configura Threads
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Advanced Manual Link Footer -->
+        <div class="hub-modal-subfooter mt-4">
+          <span>Hai parametri personalizzati o credenziali manuali?</span>
+          <button type="button" class="btn-link-action" id="btnHubOpenManual">
+            ⚙️ Configurazione Manuale Canale
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CONNETTI ACCOUNT LINKEDIN COMPANY -->
+  <div id="connectLinkedInModal" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width: 580px;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 0.65rem;">
+          <svg width="28" height="28" viewBox="0 0 24 24">
+            <rect width="24" height="24" rx="5" fill="#0A66C2"/>
+            <path fill="#ffffff" d="M19 19h-3.125v-4.893c0-1.167-.023-2.67-1.626-2.67-1.629 0-1.878 1.272-1.878 2.585V19H9.246V8.95h2.999v1.374h.042c.418-.792 1.439-1.626 2.962-1.626 3.167 0 3.751 2.085 3.751 4.796V19zM6.556 7.578a1.813 1.813 0 1 1 0-3.626 1.813 1.813 0 0 1 0 3.626zM8.118 19H4.993V8.95h3.125V19z"/>
+          </svg>
+          <div>
+            <h3>Connetti Pagina LinkedIn</h3>
+            <p class="panel-desc" style="margin-top: 0.2rem;">Rispondi ai commenti sui post della Pagina Aziendale LinkedIn.</p>
+          </div>
+        </div>
+        <button class="modal-close" id="btnCloseLinkedInModal">&times;</button>
+      </div>
+      <form id="connectLinkedInForm" class="modal-body">
+        <div class="info-alert-lime mb-4" style="font-size: 0.82rem; line-height: 1.5; border-color: rgba(10, 102, 194, 0.4); background: rgba(10, 102, 194, 0.05); color: #e2e8f0;">
+          💼 <b>LinkedIn Community API</b><br>
+          Inserisci l'Access Token OAuth generato per la tua applicazione LinkedIn con permessi <code>w_organization_social</code> e <code>r_organization_social</code>.
+        </div>
+
+        <div class="form-group">
+          <label for="liAccountName">Nome Pagina Aziendale</label>
+          <input type="text" id="liAccountName" placeholder="es. Nome Azienda S.p.A." required>
+        </div>
+
+        <div class="form-group">
+          <label for="liAccountHandle">Vanity Handle LinkedIn (es. nome-azienda)</label>
+          <input type="text" id="liAccountHandle" placeholder="es. azienda-spa" required>
+        </div>
+
+        <div class="form-group">
+          <label for="liAccessToken">LinkedIn OAuth Access Token (Bearer)</label>
+          <input type="password" id="liAccessToken" placeholder="Incolla il token OAuth2 LinkedIn" required>
+        </div>
+
+        <div class="form-group">
+          <label for="liOrganizationId">Organization URN / ID (opzionale)</label>
+          <input type="text" id="liOrganizationId" placeholder="es. urn:li:organization:1234567">
+        </div>
+
+        <div class="modal-footer" style="padding: 1rem 0 0 0;">
+          <button type="button" class="btn btn-ghost" id="btnCancelLinkedInModal">Annulla</button>
+          <button type="submit" class="btn btn-linkedin" id="btnSubmitLinkedIn">
+            💼 Salva e Collega LinkedIn
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: CONNETTI ACCOUNT THREADS OFFICIAL -->
+  <div id="connectThreadsModal" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width: 580px;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 0.65rem;">
+          <svg width="28" height="28" viewBox="0 0 24 24">
+            <rect width="24" height="24" rx="6" fill="#141414" stroke="#333" stroke-width="1"/>
+            <path fill="#ffffff" d="M12.001 2c-5.522 0-10 4.477-10 10 0 5.521 4.478 10 10 10 5.52 0 10-4.479 10-10 0-5.523-4.48-10-10-10zm3.89 12.396c-.347.165-.773.295-1.28.39a8.134 8.134 0 0 1-1.332.112c-1.884 0-3.085-.882-3.085-2.261 0-1.464 1.285-2.455 3.197-2.455.539 0 1.05.08 1.52.238.384.13.722.316 1.008.556v-.427c0-1.503-.984-2.318-2.633-2.318-.95 0-1.829.288-2.544.83l-.75-1.258c.995-.747 2.215-1.144 3.54-1.144 2.766 0 4.293 1.488 4.293 4.195v4.545h-1.627v-.989c-.104-.012-.209-.012-.307-.012zm-1.07-2.483c-.22-.132-.49-.234-.813-.306a4.43 4.43 0 0 0-.915-.098c-1.096 0-1.782.527-1.782 1.34 0 .736.608 1.22 1.637 1.22.428 0 .806-.056 1.135-.168.324-.11.572-.256.738-.435v-1.553z"/>
+          </svg>
+          <div>
+            <h3>Connetti Threads Official</h3>
+            <p class="panel-desc" style="margin-top: 0.2rem;">Rispondi ai post e discussioni Threads dell'account aziendale.</p>
+          </div>
+        </div>
+        <button class="modal-close" id="btnCloseThreadsModal">&times;</button>
+      </div>
+      <form id="connectThreadsForm" class="modal-body">
+        <div class="info-alert-lime mb-4" style="font-size: 0.82rem; line-height: 1.5; border-color: rgba(255, 255, 255, 0.2); background: rgba(255, 255, 255, 0.04); color: #e2e8f0;">
+          🧵 <b>Threads API by Meta</b><br>
+          Inserisci il token Threads con permessi <code>threads_content_publish</code> e <code>threads_read_replies</code>.
+        </div>
+
+        <div class="form-group">
+          <label for="thAccountName">Nome Profilo Threads</label>
+          <input type="text" id="thAccountName" placeholder="es. Brand Threads" required>
+        </div>
+
+        <div class="form-group">
+          <label for="thAccountHandle">Handle Threads (@username)</label>
+          <input type="text" id="thAccountHandle" placeholder="es. @brand" required>
+        </div>
+
+        <div class="form-group">
+          <label for="thAccessToken">Threads User Access Token</label>
+          <input type="password" id="thAccessToken" placeholder="Incolla il token di accesso Threads" required>
+        </div>
+
+        <div class="form-group">
+          <label for="thUserId">Threads User ID (opzionale)</label>
+          <input type="text" id="thUserId" placeholder="es. 17841400000000000">
+        </div>
+
+        <div class="modal-footer" style="padding: 1rem 0 0 0;">
+          <button type="button" class="btn btn-ghost" id="btnCancelThreadsModal">Annulla</button>
+          <button type="submit" class="btn btn-primary" id="btnSubmitThreads">
+            🧵 Salva e Collega Threads
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- MODAL: CONNETTI CANALE SOCIAL -->
   <div id="connectAccountModal" class="modal-overlay hidden">
     <div class="modal-card">
@@ -526,7 +1105,6 @@
               <option value="tiktok">🎵 TikTok Commercial Account</option>
               <option value="linkedin">💼 LinkedIn Company Page</option>
               <option value="threads">🧵 Threads Official Account</option>
-              <option value="x">🐦 X (Twitter)</option>
             </select>
           </div>
           <div class="form-group">
@@ -620,7 +1198,6 @@
               <option value="tiktok">🎵 TikTok</option>
               <option value="linkedin">💼 LinkedIn</option>
               <option value="threads">🧵 Threads</option>
-              <option value="x">🐦 X</option>
             </select>
           </div>
           <div class="form-group flex-1">
