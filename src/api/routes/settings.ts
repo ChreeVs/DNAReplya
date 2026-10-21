@@ -68,6 +68,30 @@ router.post('/', async (req: Request, res: Response) => {
   }
 });
 
+// POST remove a specific API key (OpenAI, Gemini, Anthropic, Telegram)
+router.post('/remove-key', async (req: Request, res: Response) => {
+  try {
+    const { key } = req.body;
+    const updates: any = {};
+    if (key === 'openai') updates.api_key_openai = '';
+    if (key === 'gemini') updates.api_key_gemini = '';
+    if (key === 'anthropic') updates.api_key_anthropic = '';
+    if (key === 'telegram') {
+      updates.global_telegram_bot_token = '';
+      TelegramBotService.stopPolling();
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ success: false, error: 'Chiave specificata non valida' });
+    }
+
+    const updated = await dbRepository.updateGlobalSettings(updates);
+    res.json({ success: true, message: `Chiave ${key} rimossa con successo`, settings: updated });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // POST test Telegram connection
 router.post('/test-telegram', async (req: Request, res: Response) => {
   try {

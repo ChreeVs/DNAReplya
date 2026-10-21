@@ -1539,25 +1539,63 @@ document.addEventListener('DOMContentLoaded', () => {
       const s = data.settings;
       defaultAiProvider.value = s.default_ai_provider || 'openai';
 
-      updateBadge(badgeOpenAI, s.has_openai, s.api_key_openai_masked);
-      updateBadge(badgeGemini, s.has_gemini, s.api_key_gemini_masked);
-      updateBadge(badgeAnthropic, s.has_anthropic, s.api_key_anthropic_masked);
-      updateBadge(badgeGlobalTelegram, s.has_telegram, s.telegram_bot_token_masked);
+      updateBadge(badgeOpenAI, s.has_openai, s.api_key_openai_masked, 'btnRemoveOpenAI');
+      updateBadge(badgeGemini, s.has_gemini, s.api_key_gemini_masked, 'btnRemoveGemini');
+      updateBadge(badgeAnthropic, s.has_anthropic, s.api_key_anthropic_masked, 'btnRemoveAnthropic');
+      updateBadge(badgeGlobalTelegram, s.has_telegram, s.telegram_bot_token_masked, 'btnRemoveTelegram');
     } catch (err) {
       console.error('Error loading global settings:', err);
     }
   }
 
-  function updateBadge(badgeEl, isConfigured, maskedVal) {
+  function updateBadge(badgeEl, isConfigured, maskedVal, removeBtnId = null) {
     if (!badgeEl) return;
+    const removeBtn = removeBtnId ? document.getElementById(removeBtnId) : null;
     if (isConfigured) {
       badgeEl.className = 'key-status-badge active';
       badgeEl.textContent = `Configurata (${maskedVal})`;
+      if (removeBtn) removeBtn.classList.remove('hidden');
     } else {
       badgeEl.className = 'key-status-badge';
       badgeEl.textContent = 'Non configurata';
+      if (removeBtn) removeBtn.classList.add('hidden');
     }
   }
+
+  window.removeApiKey = async (key) => {
+    const keyLabels = {
+      openai: 'OpenAI',
+      gemini: 'Google Gemini',
+      anthropic: 'Anthropic Claude',
+      telegram: 'Telegram Bot Token',
+    };
+    const name = keyLabels[key] || key;
+    if (!confirm(`Sei sicuro di voler rimuovere la chiave API per ${name}? L'applicazione non utilizzerà più questo provider a meno che non reinserisci una nuova chiave.`)) {
+      return;
+    }
+
+    try {
+      showToast(`Rimozione chiave ${name} in corso...`, 'info');
+      const res = await apiFetch('/api/settings/remove-key', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast(`🗑️ Chiave ${name} rimossa con successo!`, 'success');
+        if (key === 'openai') keyOpenAI.value = '';
+        if (key === 'gemini') keyGemini.value = '';
+        if (key === 'anthropic') keyAnthropic.value = '';
+        if (key === 'telegram') globalTelegramToken.value = '';
+        await loadGlobalSettings();
+      } else {
+        showToast(`❌ Errore: ${data.error}`, 'error');
+      }
+    } catch (err) {
+      showToast('❌ Errore durante la rimozione della chiave', 'error');
+    }
+  };
 
   globalByokForm.addEventListener('submit', async (e) => {
     e.preventDefault();

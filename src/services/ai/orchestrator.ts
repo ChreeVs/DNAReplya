@@ -12,21 +12,31 @@ export class AIOrchestrator {
     // Clean username to avoid double @@
     const cleanUsername = (req.authorUsername || '').replace(/^@+/, '');
 
-    // 1. Resolve provider and API key with smart auto-fallback
-    let provider = (profile?.ai_provider || globalSettings.default_ai_provider || 'openai') as AIProvider;
+    // 1. Resolve provider and API key
+    // The user's selection in Configurazione BYOK (default_ai_provider) is the primary source of truth
+    let provider: AIProvider = (globalSettings.default_ai_provider || 'openai') as AIProvider;
     let apiKey = this.getApiKey(globalSettings, provider);
 
-    // If the selected provider has no API key, automatically fallback to whichever provider has a key
+    // If preferred provider has no key configured, check if profile preferred a provider that HAS a key:
+    if (!apiKey && profile?.ai_provider) {
+      const pKey = this.getApiKey(globalSettings, profile.ai_provider as AIProvider);
+      if (pKey) {
+        provider = profile.ai_provider as AIProvider;
+        apiKey = pKey;
+      }
+    }
+
+    // If still no key, fallback to whichever provider actually has a key
     if (!apiKey) {
-      if (this.getApiKey(globalSettings, 'gemini')) {
-        provider = 'gemini';
-        apiKey = this.getApiKey(globalSettings, 'gemini');
+      if (this.getApiKey(globalSettings, 'anthropic')) {
+        provider = 'anthropic';
+        apiKey = this.getApiKey(globalSettings, 'anthropic');
       } else if (this.getApiKey(globalSettings, 'openai')) {
         provider = 'openai';
         apiKey = this.getApiKey(globalSettings, 'openai');
-      } else if (this.getApiKey(globalSettings, 'anthropic')) {
-        provider = 'anthropic';
-        apiKey = this.getApiKey(globalSettings, 'anthropic');
+      } else if (this.getApiKey(globalSettings, 'gemini')) {
+        provider = 'gemini';
+        apiKey = this.getApiKey(globalSettings, 'gemini');
       }
     }
 
@@ -332,28 +342,57 @@ ${profile?.forbidden_words ? `TERMINI O ARGOMENTI VIETATI (NON USARLI MAI):\n${p
     systemPrompt: string,
     userPrompt: string
   ): Promise<string> {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model,
-        max_tokens: 600,
-        system: systemPrompt,
-        messages: [{ role: 'user', content: userPrompt }],
-        temperature: 0.7,
-      }),
-    });
+    const cleanKey = (apiKey || '').trim().replace(/^["']|["']$/g, '');
+    const requestedModel = (model || 'claude-3-5-sonnet-20241022').trim();
 
-    if (!res.ok) {
-      const err = await res.text();
-      throw new Error(`Claude error (${res.status}): ${err}`);
+    const candidateModels = Array.from(new Set([
+      requestedModel,
+      'claude-3-5-sonnet-20241022',
+      'claude-3-5-haiku-20241022',
+      'claude-3-haiku-20240307',
+      'claude-3-sonnet-20240229',
+    ]));
+
+    let lastError = '';
+
+    for (const candModel of candidateModels) {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': cleanKey,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model: candModel,
+          max_tokens: 600,
+          system: systemPrompt,
+          messages: [{ role: 'user', content: userPrompt }],
+          temperature: 0.7,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json() as any;
+        return data.content?.[0]?.text || '';
+      }
+
+      const errText = await res.text();
+      let parsed: any = null;
+      try { parsed = JSON.parse(errText); } catch (_) {}
+      const errMsg = parsed?.error?.message || errText;
+
+      // If 404 (model not found), try next model
+      if (res.status === 404 || errMsg.toLowerCase().includes('not_found')) {
+        console.warn(`[AIOrchestrator] Claude model "${candModel}" 404: ${errMsg}`);
+        lastError = errMsg;
+        continue;
+      }
+
+      // If 401 or other client error, fail immediately with clear explanation
+      throw new Error(`Claude Anthropic (${res.status}): ${errMsg}`);
     }
 
-    const data = await res.json() as any;
-    return data.content?.[0]?.text || '';
+    throw new Error(`Claude Anthropic: Nessun modello disponibile (${lastError}). Verifica la chiave su console.anthropic.com`);
   }
 }

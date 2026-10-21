@@ -2043,6 +2043,35 @@ input:checked + .toggle-slider:before {
   transform: scale(1.02);
 }
 
+/* Remove API Key Button in BYOK Panel */
+.btn-remove-key {
+  background: rgba(244, 63, 94, 0.1);
+  border: 1px solid rgba(244, 63, 94, 0.3);
+  color: #fda4af;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.2rem 0.55rem;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.btn-remove-key:hover {
+  background: rgba(244, 63, 94, 0.22);
+  border-color: rgba(244, 63, 94, 0.6);
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(244, 63, 94, 0.25);
+}
+
+.btn-remove-key.hidden {
+  display: none !important;
+}
+
+
 
 
 

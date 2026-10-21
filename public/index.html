@@ -363,7 +363,10 @@
             <div class="form-group">
               <div class="label-with-status">
                 <label for="keyOpenAI">OpenAI API Key</label>
-                <span class="key-status-badge" id="badgeOpenAI">Non configurata</span>
+                <div style="display: flex; align-items: center; gap: 0.45rem;">
+                  <span class="key-status-badge" id="badgeOpenAI">Non configurata</span>
+                  <button type="button" class="btn-remove-key hidden" id="btnRemoveOpenAI" onclick="window.removeApiKey('openai')" title="Rimuovi chiave OpenAI">🗑️ Rimuovi</button>
+                </div>
               </div>
               <input type="password" id="keyOpenAI" placeholder="sk-...">
             </div>
@@ -371,7 +374,10 @@
             <div class="form-group">
               <div class="label-with-status">
                 <label for="keyGemini">Google Gemini API Key</label>
-                <span class="key-status-badge" id="badgeGemini">Non configurata</span>
+                <div style="display: flex; align-items: center; gap: 0.45rem;">
+                  <span class="key-status-badge" id="badgeGemini">Non configurata</span>
+                  <button type="button" class="btn-remove-key hidden" id="btnRemoveGemini" onclick="window.removeApiKey('gemini')" title="Rimuovi chiave Gemini">🗑️ Rimuovi</button>
+                </div>
               </div>
               <input type="password" id="keyGemini" placeholder="AIzaSy...">
             </div>
@@ -379,7 +385,10 @@
             <div class="form-group">
               <div class="label-with-status">
                 <label for="keyAnthropic">Anthropic Claude API Key</label>
-                <span class="key-status-badge" id="badgeAnthropic">Non configurata</span>
+                <div style="display: flex; align-items: center; gap: 0.45rem;">
+                  <span class="key-status-badge" id="badgeAnthropic">Non configurata</span>
+                  <button type="button" class="btn-remove-key hidden" id="btnRemoveAnthropic" onclick="window.removeApiKey('anthropic')" title="Rimuovi chiave Claude">🗑️ Rimuovi</button>
+                </div>
               </div>
               <input type="password" id="keyAnthropic" placeholder="sk-ant-...">
             </div>
@@ -414,7 +423,10 @@
             <div class="form-group">
               <div class="label-with-status">
                 <label for="globalTelegramToken">Global Bot Token</label>
-                <span class="key-status-badge" id="badgeGlobalTelegram">Non configurato</span>
+                <div style="display: flex; align-items: center; gap: 0.45rem;">
+                  <span class="key-status-badge" id="badgeGlobalTelegram">Non configurato</span>
+                  <button type="button" class="btn-remove-key hidden" id="btnRemoveTelegram" onclick="window.removeApiKey('telegram')" title="Rimuovi token Telegram">🗑️ Rimuovi</button>
+                </div>
               </div>
               <input type="password" id="globalTelegramToken" placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz">
             </div>
