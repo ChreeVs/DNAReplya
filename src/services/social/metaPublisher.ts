@@ -4,7 +4,7 @@ export class MetaPublisherService {
   /**
    * Publishes an approved reply to Facebook or Instagram via Graph API
    */
-  static async publishReply(commentId: string, replyText: string): Promise<{ success: boolean; error?: string }> {
+  static async publishReply(commentId: string, replyText: string): Promise<{ success: boolean; error?: string; publishedId?: string }> {
     try {
       const comment = await dbRepository.getCommentById(commentId);
       if (!comment) {
@@ -31,7 +31,7 @@ export class MetaPublisherService {
 
       if (!socialAccount || !socialAccount.access_token) {
         console.warn(`[MetaPublisher] Nessun account social con token trovato per commento ${commentId} (${comment.platform}).`);
-        return { success: true }; // Still considered handled locally
+        return { success: false, error: 'Nessun account social con token di accesso collegato per questo profilo.' };
       }
 
       const platform = comment.platform.toLowerCase();
@@ -49,28 +49,32 @@ export class MetaPublisherService {
         return { success: true };
       }
 
+      // Meta Graph API requires form-urlencoded parameters
+      const formParams = new URLSearchParams();
+      formParams.append('message', replyText);
+      formParams.append('access_token', accessToken);
+
       const res = await fetch(url, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: JSON.stringify({
-          message: replyText,
-          access_token: accessToken,
-        }),
+        body: formParams.toString(),
+        signal: AbortSignal.timeout(10000), // 10s timeout to never hang
       });
 
       const data = await res.json() as any;
       if (data.id) {
         console.log(`[MetaPublisher] Risposta pubblicata con successo su ${platform}! ID Risposta: ${data.id}`);
-        return { success: true };
+        return { success: true, publishedId: data.id };
       } else {
-        console.error(`[MetaPublisher] Errore pubblicazione ${platform}:`, data);
-        return { success: false, error: data.error?.message || 'Errore pubblicazione risposta' };
+        const errMessage = data.error?.message || JSON.stringify(data.error || data);
+        console.error(`[MetaPublisher] Errore pubblicazione ${platform}:`, errMessage);
+        return { success: false, error: errMessage };
       }
     } catch (err: any) {
       console.error('[MetaPublisher Exception]', err);
-      return { success: false, error: err.message };
+      return { success: false, error: err.message || 'Timeout o errore di rete con le API Meta' };
     }
   }
 }

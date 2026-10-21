@@ -1222,16 +1222,39 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   window.approveComment = async (id) => {
+    const card = document.getElementById(`card-${id}`);
+    const btn = card?.querySelector('.btn-card-action.approve');
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = '⏳ Invio in corso...';
+    }
+    showToast('⏳ Approvazione e invio in corso...', 'info');
+
     try {
       const res = await apiFetch(`/api/comments/${id}/approve`, { method: 'POST' });
       const data = await res.json();
       if (data.success) {
-        showToast('✅ Risposta approvata e memorizzata nel profilo!', 'success');
-        loadActiveProfileComments();
-        loadActiveProfileMemory();
+        if (data.publishedToSocial) {
+          showToast(`🎉 ${data.message}`, 'success');
+        } else {
+          showToast(`✅ ${data.message}`, 'info');
+        }
+        await loadActiveProfileComments();
+        await loadActiveProfileMemory();
+      } else {
+        showToast(`❌ Errore approvazione: ${data.error}`, 'error');
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = '🟢 Approva e Invia';
+        }
       }
     } catch (err) {
+      console.error('Approve error:', err);
       showToast('❌ Errore durante l\'approvazione', 'error');
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = '🟢 Approva e Invia';
+      }
     }
   };
 
@@ -1267,6 +1290,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const customText = modalReplyText.value.trim();
     if (!customText) return;
 
+    btnModalSubmit.disabled = true;
+    btnModalSubmit.textContent = '⏳ Invio in corso...';
+
     try {
       const res = await apiFetch(`/api/comments/${activeModalCommentId}/approve`, {
         method: 'POST',
@@ -1275,13 +1301,18 @@ document.addEventListener('DOMContentLoaded', () => {
       });
       const data = await res.json();
       if (data.success) {
-        showToast('✅ Risposta salvata e memorizzata!', 'success');
+        showToast(`🎉 ${data.message}`, 'success');
         replyModal.classList.add('hidden');
-        loadActiveProfileComments();
-        loadActiveProfileMemory();
+        await loadActiveProfileComments();
+        await loadActiveProfileMemory();
+      } else {
+        showToast(`❌ ${data.error}`, 'error');
       }
     } catch (err) {
       showToast('❌ Errore salvataggio', 'error');
+    } finally {
+      btnModalSubmit.disabled = false;
+      btnModalSubmit.textContent = '✅ Approva & Memorizza';
     }
   });
 

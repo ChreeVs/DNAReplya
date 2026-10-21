@@ -117,8 +117,12 @@ router.post('/:id/approve', async (req: Request, res: Response) => {
 
     res.json({
       success: true,
-      message: 'Risposta approvata, inviata al canale social e memorizzata per questo profilo',
+      platform: comment.platform,
       publishedToSocial: publishRes.success,
+      publishError: publishRes.error,
+      message: publishRes.success
+        ? `Risposta approvata e pubblicata su ${comment.platform.toUpperCase()}!`
+        : `Risposta approvata localmente (avviso Meta: ${publishRes.error || 'Invio non riuscito'})`,
     });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
