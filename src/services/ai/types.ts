@@ -1,6 +1,7 @@
-export type AIProvider = 'openai' | 'gemini' | 'anthropic' | 'groq';
+export type AIProvider = 'openai' | 'gemini' | 'anthropic';
 
 export interface GenerateReplyRequest {
+  profileId: string;
   platform: string;
   authorUsername: string;
   commentText: string;

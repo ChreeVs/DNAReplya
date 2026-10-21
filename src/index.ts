@@ -6,17 +6,17 @@ import { config } from './config/index.js';
 import { initDatabase, dbRepository } from './db/index.js';
 import { TelegramBotService } from './services/telegram/bot.js';
 
+import profilesRouter from './api/routes/profiles.js';
 import settingsRouter from './api/routes/settings.js';
 import commentsRouter from './api/routes/comments.js';
-import simulatorRouter from './api/routes/simulator.js';
 import webhooksRouter from './api/routes/webhooks.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// 1. Initialize SQLite Database
+// 1. Initialize SQLite Database & default profiles
 initDatabase();
-console.log('✅ [Database] SQLite initialized successfully at:', config.databasePath);
+console.log('✅ [Database] SQLite multi-profilo inizializzato su:', config.databasePath);
 
 // 2. Initialize Express App
 const app = express();
@@ -29,20 +29,21 @@ const publicDir = path.resolve(process.cwd(), 'public');
 app.use(express.static(publicDir));
 
 // 4. API Routes
+app.use('/api/profiles', profilesRouter);
 app.use('/api/settings', settingsRouter);
 app.use('/api/comments', commentsRouter);
-app.use('/api/simulator', simulatorRouter);
 app.use('/api/webhooks', webhooksRouter);
 
 // Healthcheck endpoint
 app.get('/api/health', (req, res) => {
-  const settings = dbRepository.getSettings();
+  const globalSettings = dbRepository.getGlobalSettings();
+  const profiles = dbRepository.getAllProfiles();
   res.json({
     status: 'healthy',
     timestamp: new Date().toISOString(),
-    aiProvider: settings.ai_provider,
-    telegramConfigured: Boolean(settings.telegram_bot_token && settings.telegram_admin_chat_id),
-    autoPilot: Boolean(settings.auto_pilot_enabled),
+    profilesCount: profiles.length,
+    defaultAIProvider: globalSettings.default_ai_provider,
+    telegramConfigured: Boolean(globalSettings.global_telegram_bot_token),
   });
 });
 
@@ -58,8 +59,8 @@ app.use((req, res) => {
 const server = app.listen(config.port, () => {
   console.log(`
 ╔═══════════════════════════════════════════════════════════╗
-║                   🧬 DNAReplya Core Hub                   ║
-║   AI Social Media Reply & Approval Assistant is RUNNING   ║
+║               🧬 DNAReplya Multi-Profilo Hub              ║
+║       Social AI Reply & Approval Assistant is RUNNING     ║
 ╠═══════════════════════════════════════════════════════════╣
 ║  🌐 Web Dashboard:    http://localhost:${config.port}              ║
 ║  📡 API Endpoint:     http://localhost:${config.port}/api          ║
@@ -67,7 +68,6 @@ const server = app.listen(config.port, () => {
 ╚═══════════════════════════════════════════════════════════╝
   `);
 
-  // Start background Telegram polling if bot token is present
   TelegramBotService.startPolling();
 });
 

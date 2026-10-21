@@ -1,69 +1,94 @@
-// DNAReplya Dashboard Frontend Logic
+// DNAReplya Multi-Profile Dashboard Frontend Logic (Carbon & Lime Theme)
 document.addEventListener('DOMContentLoaded', () => {
-  // State
-  let currentSettings = {};
-  let currentComments = [];
-  let currentMemory = [];
+  // Global State
+  let allProfiles = [];
+  let activeProfile = null;
+  let activeProfileAccounts = [];
+  let activeProfileComments = [];
+  let activeProfileMemory = [];
+  let activeFilter = 'all';
   let activeModalCommentId = null;
 
-  // DOM Elements - Tabs
+  // DOM Elements - Navigation & Switcher
+  const btnProfileDropdown = document.getElementById('btnProfileDropdown');
+  const profileDropdownMenu = document.getElementById('profileDropdownMenu');
+  const profileDropdownList = document.getElementById('profileDropdownList');
+  const headerProfileName = document.getElementById('headerProfileName');
+  const headerProfileDot = document.getElementById('headerProfileDot');
+  const btnOpenCreateProfileModal = document.getElementById('btnOpenCreateProfileModal');
+
   const navTabs = document.querySelectorAll('.nav-tab');
   const tabPanes = document.querySelectorAll('.tab-pane');
 
-  // DOM Elements - Simulator
-  const platformButtons = document.querySelectorAll('.platform-btn');
-  const simPlatformInput = document.getElementById('simPlatform');
-  const simulatorForm = document.getElementById('simulatorForm');
-  const simAuthorInput = document.getElementById('simAuthor');
-  const simPostSnippetInput = document.getElementById('simPostSnippet');
-  const simCommentTextInput = document.getElementById('simCommentText');
-  const presetChips = document.querySelectorAll('.chip-btn');
-  const btnSimulate = document.getElementById('btnSimulate');
-
-  // DOM Elements - Feed & Metrics
-  const feedList = document.getElementById('feedList');
-  const btnRefreshFeed = document.getElementById('btnRefreshFeed');
-  const metricTotalComments = document.getElementById('metricTotalComments');
-  const metricApproved = document.getElementById('metricApproved');
-  const metricMemory = document.getElementById('metricMemory');
-  const metricMode = document.getElementById('metricMode');
+  // DOM Elements - Banner
+  const bannerProfileAvatar = document.getElementById('bannerProfileAvatar');
+  const bannerProfileName = document.getElementById('bannerProfileName');
+  const bannerProfileDesc = document.getElementById('bannerProfileDesc');
+  const bannerAutopilotPill = document.getElementById('bannerAutopilotPill');
+  const statConnectedChannels = document.getElementById('statConnectedChannels');
+  const statPendingComments = document.getElementById('statPendingComments');
+  const statApprovedComments = document.getElementById('statApprovedComments');
+  const statMemoryItems = document.getElementById('statMemoryItems');
+  const inboxCountBadge = document.getElementById('inboxCountBadge');
+  const channelsCountBadge = document.getElementById('channelsCountBadge');
   const memoryCountBadge = document.getElementById('memoryCountBadge');
 
-  // DOM Elements - Settings Forms
-  const aiSettingsForm = document.getElementById('aiSettingsForm');
-  const aiProviderSelect = document.getElementById('aiProvider');
-  const aiModelInput = document.getElementById('aiModel');
-  const apiKeyOpenAI = document.getElementById('apiKeyOpenAI');
-  const apiKeyGemini = document.getElementById('apiKeyGemini');
-  const apiKeyAnthropic = document.getElementById('apiKeyAnthropic');
-  const apiKeyGroq = document.getElementById('apiKeyGroq');
+  // DOM Elements - Tab 1: Inbox
+  const feedList = document.getElementById('feedList');
+  const btnRefreshFeed = document.getElementById('btnRefreshFeed');
+  const filterChips = document.querySelectorAll('.filter-chip');
+  const btnOpenIngestModal = document.getElementById('btnOpenIngestModal');
 
-  const badgeOpenAI = document.getElementById('badgeOpenAI');
-  const badgeGemini = document.getElementById('badgeGemini');
-  const badgeAnthropic = document.getElementById('badgeAnthropic');
-  const badgeGroq = document.getElementById('badgeGroq');
-  const badgeTelegram = document.getElementById('badgeTelegram');
+  // DOM Elements - Tab 2: Channels
+  const channelsGrid = document.getElementById('channelsGrid');
+  const btnOpenConnectModal = document.getElementById('btnOpenConnectModal');
 
-  const telegramSettingsForm = document.getElementById('telegramSettingsForm');
-  const telegramBotToken = document.getElementById('telegramBotToken');
-  const telegramChatId = document.getElementById('telegramChatId');
-  const btnTestTelegram = document.getElementById('btnTestTelegram');
-
-  // DOM Elements - Guardrails
-  const guardrailsForm = document.getElementById('guardrailsForm');
-  const toneOfVoiceSelect = document.getElementById('toneOfVoice');
-  const maxReplyLengthSlider = document.getElementById('maxReplyLength');
+  // DOM Elements - Tab 3: Guardrails
+  const profileGuardrailsForm = document.getElementById('profileGuardrailsForm');
+  const profToneOfVoice = document.getElementById('profToneOfVoice');
+  const profMaxReplyLength = document.getElementById('profMaxReplyLength');
   const charLengthDisplay = document.getElementById('charLengthDisplay');
-  const customToneInstructions = document.getElementById('customToneInstructions');
-  const businessKnowledge = document.getElementById('businessKnowledge');
-  const forbiddenWords = document.getElementById('forbiddenWords');
-  const autoPilotToggle = document.getElementById('autoPilotToggle');
+  const profCustomTone = document.getElementById('profCustomTone');
+  const profBusinessKnowledge = document.getElementById('profBusinessKnowledge');
+  const profForbiddenWords = document.getElementById('profForbiddenWords');
+  const profTelegramToken = document.getElementById('profTelegramToken');
+  const profTelegramChatId = document.getElementById('profTelegramChatId');
+  const profAutoPilotToggle = document.getElementById('profAutoPilotToggle');
 
-  // DOM Elements - Memory Tab
+  // DOM Elements - Tab 4: Memory
   const memoryList = document.getElementById('memoryList');
   const btnRefreshMemory = document.getElementById('btnRefreshMemory');
 
-  // DOM Elements - Modal
+  // DOM Elements - Tab 5: BYOK
+  const globalByokForm = document.getElementById('globalByokForm');
+  const defaultAiProvider = document.getElementById('defaultAiProvider');
+  const keyOpenAI = document.getElementById('keyOpenAI');
+  const keyGemini = document.getElementById('keyGemini');
+  const keyAnthropic = document.getElementById('keyAnthropic');
+  const badgeOpenAI = document.getElementById('badgeOpenAI');
+  const badgeGemini = document.getElementById('badgeGemini');
+  const badgeAnthropic = document.getElementById('badgeAnthropic');
+  const globalTelegramForm = document.getElementById('globalTelegramForm');
+  const globalTelegramToken = document.getElementById('globalTelegramToken');
+  const badgeGlobalTelegram = document.getElementById('badgeGlobalTelegram');
+  const btnTestGlobalTelegram = document.getElementById('btnTestGlobalTelegram');
+
+  // DOM Elements - Modals
+  const createProfileModal = document.getElementById('createProfileModal');
+  const createProfileForm = document.getElementById('createProfileForm');
+  const btnCloseCreateProfile = document.getElementById('btnCloseCreateProfile');
+  const btnCancelCreateProfile = document.getElementById('btnCancelCreateProfile');
+
+  const connectAccountModal = document.getElementById('connectAccountModal');
+  const connectAccountForm = document.getElementById('connectAccountForm');
+  const btnCloseConnectModal = document.getElementById('btnCloseConnectModal');
+  const btnCancelConnectModal = document.getElementById('btnCancelConnectModal');
+
+  const ingestModal = document.getElementById('ingestModal');
+  const ingestCommentForm = document.getElementById('ingestCommentForm');
+  const btnCloseIngestModal = document.getElementById('btnCloseIngestModal');
+  const btnCancelIngestModal = document.getElementById('btnCancelIngestModal');
+
   const replyModal = document.getElementById('replyModal');
   const modalAuthor = document.getElementById('modalAuthor');
   const modalComment = document.getElementById('modalComment');
@@ -72,45 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnModalCancel = document.getElementById('btnModalCancel');
   const btnModalSubmit = document.getElementById('btnModalSubmit');
 
-  // --- 1. Tab Switching ---
-  navTabs.forEach(tab => {
-    tab.addEventListener('click', () => {
-      const targetId = tab.dataset.tab;
-      navTabs.forEach(t => t.classList.remove('active'));
-      tabPanes.forEach(p => p.classList.remove('active'));
-
-      tab.classList.add('active');
-      document.getElementById(targetId)?.classList.add('active');
-
-      if (targetId === 'tab-inbox') loadComments();
-      if (targetId === 'tab-memory') loadMemory();
-      if (targetId === 'tab-settings') loadSettings();
-    });
-  });
-
-  // --- 2. Platform Selector in Simulator ---
-  platformButtons.forEach(btn => {
-    btn.addEventListener('click', () => {
-      platformButtons.forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      simPlatformInput.value = btn.dataset.platform;
-    });
-  });
-
-  // --- 3. Preset Chips ---
-  presetChips.forEach(chip => {
-    chip.addEventListener('click', () => {
-      simCommentTextInput.value = chip.dataset.text;
-      simCommentTextInput.focus();
-    });
-  });
-
-  // --- 4. Range Slider ---
-  maxReplyLengthSlider.addEventListener('input', (e) => {
-    charLengthDisplay.textContent = e.target.value;
-  });
-
-  // --- 5. Toast Notifications ---
+  // Toast utility
   function showToast(message, type = 'info') {
     const container = document.getElementById('toastContainer');
     const toast = document.createElement('div');
@@ -120,86 +107,138 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => {
       toast.style.opacity = '0';
       toast.style.transform = 'translateY(10px)';
-      setTimeout(() => toast.remove(), 300);
-    }, 3500);
+      setTimeout(() => toast.remove(), 250);
+    }, 3200);
   }
 
-  // --- 6. Fetch & Render Settings ---
-  async function loadSettings() {
+  // --- 1. Tab Navigation ---
+  navTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      const targetId = tab.dataset.tab;
+      navTabs.forEach(t => t.classList.remove('active'));
+      tabPanes.forEach(p => p.classList.remove('active'));
+
+      tab.classList.add('active');
+      document.getElementById(targetId)?.classList.add('active');
+
+      if (targetId === 'tab-inbox') loadActiveProfileComments();
+      if (targetId === 'tab-channels') loadActiveProfileChannels();
+      if (targetId === 'tab-guardrails') populateProfileGuardrails();
+      if (targetId === 'tab-memory') loadActiveProfileMemory();
+      if (targetId === 'tab-byok') loadGlobalSettings();
+    });
+  });
+
+  // --- 2. Profile Switcher Logic ---
+  btnProfileDropdown.addEventListener('click', (e) => {
+    e.stopPropagation();
+    profileDropdownMenu.classList.toggle('hidden');
+  });
+
+  document.addEventListener('click', () => {
+    profileDropdownMenu.classList.add('hidden');
+  });
+
+  profileDropdownMenu.addEventListener('click', (e) => e.stopPropagation());
+
+  async function loadProfiles(preferredId = null) {
     try {
-      const res = await fetch('/api/settings');
+      const res = await fetch('/api/profiles');
       const data = await res.json();
       if (!data.success) return;
 
-      currentSettings = data.settings;
+      allProfiles = data.profiles;
+      const savedId = preferredId || localStorage.getItem('dnareplya_active_profile');
+      activeProfile = allProfiles.find(p => p.id === savedId) || allProfiles[0];
 
-      // Populate AI form
-      aiProviderSelect.value = currentSettings.ai_provider || 'openai';
-      aiModelInput.value = currentSettings.ai_model || 'gpt-4o-mini';
-
-      updateBadge(badgeOpenAI, currentSettings.has_openai, currentSettings.api_key_openai_masked);
-      updateBadge(badgeGemini, currentSettings.has_gemini, currentSettings.api_key_gemini_masked);
-      updateBadge(badgeAnthropic, currentSettings.has_anthropic, currentSettings.api_key_anthropic_masked);
-      updateBadge(badgeGroq, currentSettings.has_groq, currentSettings.api_key_groq_masked);
-
-      // Telegram
-      telegramChatId.value = currentSettings.telegram_admin_chat_id || '';
-      updateBadge(badgeTelegram, currentSettings.has_telegram, currentSettings.telegram_bot_token_masked);
-
-      // Guardrails
-      toneOfVoiceSelect.value = currentSettings.tone_of_voice || 'friendly';
-      maxReplyLengthSlider.value = currentSettings.max_reply_length || 280;
-      charLengthDisplay.textContent = currentSettings.max_reply_length || 280;
-      customToneInstructions.value = currentSettings.custom_tone_instructions || '';
-      businessKnowledge.value = currentSettings.business_knowledge || '';
-      forbiddenWords.value = currentSettings.forbidden_words || '';
-      autoPilotToggle.checked = Boolean(currentSettings.auto_pilot_enabled);
-
-      // Update Metric
-      metricMode.textContent = currentSettings.auto_pilot_enabled ? '⚡ Auto-Pilot' : 'Human-in-the-Loop';
-      metricMode.style.color = currentSettings.auto_pilot_enabled ? 'var(--accent-purple)' : 'var(--accent-cyan)';
+      if (activeProfile) {
+        localStorage.setItem('dnareplya_active_profile', activeProfile.id);
+        updateHeaderAndBanner();
+        renderProfileDropdown();
+        loadActiveProfileData();
+      }
     } catch (err) {
-      console.error('Error loading settings:', err);
+      console.error('Error loading profiles:', err);
     }
   }
 
-  function updateBadge(badgeEl, isConfigured, maskedVal) {
-    if (!badgeEl) return;
-    if (isConfigured) {
-      badgeEl.className = 'key-status-badge active';
-      badgeEl.textContent = `Configurata (${maskedVal})`;
-    } else {
-      badgeEl.className = 'key-status-badge';
-      badgeEl.textContent = 'Non configurata';
-    }
+  function updateHeaderAndBanner() {
+    if (!activeProfile) return;
+
+    headerProfileName.textContent = activeProfile.name;
+    headerProfileDot.style.background = activeProfile.color || 'var(--lime)';
+
+    // Initials avatar
+    const initials = activeProfile.name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase() || 'SS';
+    bannerProfileAvatar.textContent = initials;
+    bannerProfileName.textContent = activeProfile.name;
+    bannerProfileDesc.textContent = activeProfile.description || 'Gestione canali social e risposte unificate';
+
+    const isAuto = Boolean(activeProfile.auto_pilot_enabled);
+    bannerAutopilotPill.textContent = isAuto ? '⚡ Auto-Pilot Attivo' : 'Human-in-the-Loop';
+    bannerAutopilotPill.style.color = isAuto ? 'var(--accent-purple)' : 'var(--lime)';
+    bannerAutopilotPill.style.borderColor = isAuto ? 'rgba(192, 132, 252, 0.4)' : 'rgba(163, 230, 53, 0.3)';
   }
 
-  // --- 7. Save Settings ---
-  aiSettingsForm.addEventListener('submit', async (e) => {
+  function renderProfileDropdown() {
+    profileDropdownList.innerHTML = allProfiles.map(p => {
+      const isActive = activeProfile && activeProfile.id === p.id;
+      const initials = p.name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
+      return `
+        <div class="profile-dropdown-item ${isActive ? 'active' : ''}" onclick="window.selectProfile('${p.id}')">
+          <div class="pitem-left">
+            <span class="pitem-circle">${initials}</span>
+            <div>
+              <div class="pitem-name">${escapeHtml(p.name)}</div>
+              <div class="pitem-count">${p.accountsCount || 0} canali · ${p.pendingCommentsCount || 0} in attesa</div>
+            </div>
+          </div>
+          ${isActive ? '<span style="color:var(--lime);font-size:0.85rem">✓</span>' : ''}
+        </div>
+      `;
+    }).join('');
+  }
+
+  window.selectProfile = (id) => {
+    profileDropdownMenu.classList.add('hidden');
+    loadProfiles(id);
+  };
+
+  function loadActiveProfileData() {
+    loadActiveProfileChannels();
+    loadActiveProfileComments();
+    loadActiveProfileMemory();
+    populateProfileGuardrails();
+  }
+
+  // --- 3. Create Profile Modal ---
+  btnOpenCreateProfileModal.addEventListener('click', () => {
+    profileDropdownMenu.classList.add('hidden');
+    createProfileModal.classList.remove('hidden');
+  });
+  btnCloseCreateProfile.addEventListener('click', () => createProfileModal.classList.add('hidden'));
+  btnCancelCreateProfile.addEventListener('click', () => createProfileModal.classList.add('hidden'));
+
+  createProfileForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const payload = {
-      ai_provider: aiProviderSelect.value,
-      ai_model: aiModelInput.value,
-    };
-    if (apiKeyOpenAI.value) payload.api_key_openai = apiKeyOpenAI.value;
-    if (apiKeyGemini.value) payload.api_key_gemini = apiKeyGemini.value;
-    if (apiKeyAnthropic.value) payload.api_key_anthropic = apiKeyAnthropic.value;
-    if (apiKeyGroq.value) payload.api_key_groq = apiKeyGroq.value;
+    const name = document.getElementById('newProfileName').value.trim();
+    const description = document.getElementById('newProfileDesc').value.trim();
+    const tone_of_voice = document.getElementById('newProfileTone').value;
+
+    if (!name) return;
 
     try {
-      const res = await fetch('/api/settings', {
+      const res = await fetch('/api/profiles', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ name, description, tone_of_voice }),
       });
       const data = await res.json();
       if (data.success) {
-        showToast('✅ Impostazioni AI salvate con successo!', 'success');
-        apiKeyOpenAI.value = '';
-        apiKeyGemini.value = '';
-        apiKeyAnthropic.value = '';
-        apiKeyGroq.value = '';
-        loadSettings();
+        showToast(`✨ Profilo "${name}" creato!`, 'success');
+        createProfileModal.classList.add('hidden');
+        createProfileForm.reset();
+        loadProfiles(data.profile.id);
       } else {
         showToast(`❌ Errore: ${data.error}`, 'error');
       }
@@ -208,24 +247,103 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  telegramSettingsForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const payload = {
-      telegram_admin_chat_id: telegramChatId.value,
+  // --- 4. Tab 2: Channels (Social Accounts) ---
+  async function loadActiveProfileChannels() {
+    if (!activeProfile) return;
+    try {
+      const res = await fetch(`/api/profiles/${activeProfile.id}/accounts`);
+      const data = await res.json();
+      if (!data.success) return;
+
+      activeProfileAccounts = data.accounts;
+      statConnectedChannels.textContent = activeProfileAccounts.length;
+      channelsCountBadge.textContent = activeProfileAccounts.length;
+      renderChannels(activeProfileAccounts);
+    } catch (err) {
+      console.error('Error loading channels:', err);
+    }
+  }
+
+  function renderChannels(accounts) {
+    if (!accounts || accounts.length === 0) {
+      channelsGrid.innerHTML = `
+        <div class="empty-state" style="grid-column: 1 / -1;">
+          <span class="empty-icon">🌐</span>
+          <p>Nessun canale collegato a questo profilo.<br>Clicca su "Connetti Account Social" per collegare Instagram, Facebook, TikTok o LinkedIn.</p>
+        </div>
+      `;
+      return;
+    }
+
+    const platformIcons = {
+      instagram: '📸 Instagram',
+      facebook: '📘 Facebook',
+      threads: '🧵 Threads',
+      linkedin: '💼 LinkedIn',
+      tiktok: '🎵 TikTok',
+      x: '🐦 X',
     };
-    if (telegramBotToken.value) payload.telegram_bot_token = telegramBotToken.value;
+
+    channelsGrid.innerHTML = accounts.map(acc => `
+      <div class="channel-card">
+        <div class="channel-card-top">
+          <span class="channel-badge">${platformIcons[acc.platform] || acc.platform}</span>
+          <span class="channel-status ${acc.status}">${acc.status === 'connected' ? '● Collegato' : 'Disconnesso'}</span>
+        </div>
+        <div>
+          <div class="channel-name">${escapeHtml(acc.account_name)}</div>
+          <div class="channel-handle">${escapeHtml(acc.account_handle)}</div>
+        </div>
+        <div class="channel-notes">${escapeHtml(acc.notes || 'Nessuna nota specificata')}</div>
+        <div class="channel-card-bottom">
+          <button class="btn btn-ghost btn-sm" onclick="window.disconnectAccount('${acc.id}')">Disconnetti</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  window.disconnectAccount = async (accId) => {
+    if (!confirm('Sei sicuro di voler disconnettere questo account social?')) return;
+    try {
+      const res = await fetch(`/api/profiles/${activeProfile.id}/accounts/${accId}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        showToast('Account social rimosso', 'info');
+        loadActiveProfileChannels();
+      }
+    } catch (err) {
+      showToast('Errore durante la disconnessione', 'error');
+    }
+  };
+
+  // Connect Account Modal
+  btnOpenConnectModal.addEventListener('click', () => connectAccountModal.classList.remove('hidden'));
+  btnCloseConnectModal.addEventListener('click', () => connectAccountModal.classList.add('hidden'));
+  btnCancelConnectModal.addEventListener('click', () => connectAccountModal.classList.add('hidden'));
+
+  connectAccountForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!activeProfile) return;
+
+    const payload = {
+      platform: document.getElementById('connPlatform').value,
+      account_name: document.getElementById('connAccountName').value.trim(),
+      account_handle: document.getElementById('connAccountHandle').value.trim(),
+      external_account_id: document.getElementById('connExternalId').value.trim(),
+    };
 
     try {
-      const res = await fetch('/api/settings', {
+      const res = await fetch(`/api/profiles/${activeProfile.id}/accounts`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (data.success) {
-        showToast('✅ Connessione Telegram salvata!', 'success');
-        telegramBotToken.value = '';
-        loadSettings();
+        showToast('✅ Account social collegato al profilo!', 'success');
+        connectAccountModal.classList.add('hidden');
+        connectAccountForm.reset();
+        loadActiveProfileChannels();
       } else {
         showToast(`❌ Errore: ${data.error}`, 'error');
       }
@@ -234,111 +352,34 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  btnTestTelegram.addEventListener('click', async () => {
-    btnTestTelegram.textContent = 'Invio in corso...';
+  // --- 5. Tab 1: Inbox Commenti ---
+  async function loadActiveProfileComments() {
+    if (!activeProfile) return;
     try {
-      const res = await fetch('/api/settings/test-telegram', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          token: telegramBotToken.value || undefined,
-          chatId: telegramChatId.value || undefined,
-        }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        showToast('🎉 Messaggio inviato! Controlla Telegram', 'success');
-      } else {
-        showToast(`❌ Errore Telegram: ${data.error}`, 'error');
-      }
-    } catch (err) {
-      showToast('❌ Impossibile contattare Telegram', 'error');
-    } finally {
-      btnTestTelegram.textContent = '📲 Invia Messaggio di Test';
-    }
-  });
-
-  guardrailsForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const payload = {
-      tone_of_voice: toneOfVoiceSelect.value,
-      max_reply_length: parseInt(maxReplyLengthSlider.value, 10),
-      custom_tone_instructions: customToneInstructions.value,
-      business_knowledge: businessKnowledge.value,
-      forbidden_words: forbiddenWords.value,
-      auto_pilot_enabled: autoPilotToggle.checked ? 1 : 0,
-    };
-
-    try {
-      const res = await fetch('/api/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
-      if (data.success) {
-        showToast('🛡️ Regole e Guardrails aggiornati!', 'success');
-        loadSettings();
-      }
-    } catch (err) {
-      showToast('❌ Errore durante il salvataggio', 'error');
-    }
-  });
-
-  // --- 8. Simulator Form Submission ---
-  simulatorForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const platform = simPlatformInput.value;
-    const authorUsername = simAuthorInput.value.trim() || 'cliente_social';
-    const postSnippet = simPostSnippetInput.value.trim();
-    const commentText = simCommentTextInput.value.trim();
-
-    if (!commentText) return;
-
-    btnSimulate.disabled = true;
-    btnSimulate.innerHTML = '<span class="btn-icon">⏳</span> Generazione Risposta AI...';
-
-    try {
-      const res = await fetch('/api/simulator/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          platform,
-          authorUsername,
-          postSnippet,
-          commentText,
-        }),
-      });
-
-      const data = await res.json();
-      if (data.success) {
-        showToast('⚡ Risposta generata e notificata!', 'success');
-        loadComments();
-        loadMemory();
-      } else {
-        showToast(`❌ Errore simulatore: ${data.error}`, 'error');
-      }
-    } catch (err) {
-      showToast('❌ Errore di connessione', 'error');
-    } finally {
-      btnSimulate.disabled = false;
-      btnSimulate.innerHTML = '<span class="btn-icon">⚡</span> Simula Ricezione & Genera Risposta';
-    }
-  });
-
-  // --- 9. Load & Render Comments ---
-  async function loadComments() {
-    try {
-      const res = await fetch('/api/comments');
+      const res = await fetch(`/api/comments?profileId=${activeProfile.id}`);
       const data = await res.json();
       if (!data.success) return;
 
-      currentComments = data.comments;
-      renderFeed(currentComments);
-      updateMetrics();
+      activeProfileComments = data.comments;
+      updateCommentsMetrics();
+      renderFeed(filterComments(activeProfileComments));
     } catch (err) {
       console.error('Error loading comments:', err);
     }
+  }
+
+  function filterComments(comments) {
+    if (activeFilter === 'pending') return comments.filter(c => c.status === 'pending');
+    if (activeFilter === 'approved') return comments.filter(c => c.status === 'approved' || c.status === 'modified' || c.status === 'auto_replied');
+    return comments;
+  }
+
+  function updateCommentsMetrics() {
+    const pending = activeProfileComments.filter(c => c.status === 'pending').length;
+    const approved = activeProfileComments.filter(c => c.status === 'approved' || c.status === 'modified' || c.status === 'auto_replied').length;
+    statPendingComments.textContent = pending;
+    statApprovedComments.textContent = approved;
+    inboxCountBadge.textContent = pending;
   }
 
   function renderFeed(comments) {
@@ -346,25 +387,23 @@ document.addEventListener('DOMContentLoaded', () => {
       feedList.innerHTML = `
         <div class="empty-state">
           <span class="empty-icon">📭</span>
-          <p>Nessun commento ricevuto finora.<br>Usa il simulatore a sinistra per inviare il tuo primo commento di test!</p>
+          <p>Nessun commento trovato per questo filtro.<br>Usa il pulsante "Registra Commento" in alto a destra per registrare un messaggio in arrivo.</p>
         </div>
       `;
       return;
     }
 
+    const platformIcons = {
+      instagram: '📸 Instagram',
+      facebook: '📘 Facebook',
+      threads: '🧵 Threads',
+      linkedin: '💼 LinkedIn',
+      tiktok: '🎵 TikTok',
+      x: '🐦 X',
+    };
+
     feedList.innerHTML = comments.map(c => {
-      const platformIcons = {
-        instagram: '📸 Instagram',
-        facebook: '📘 Facebook',
-        threads: '🧵 Threads',
-        linkedin: '💼 LinkedIn',
-        tiktok: '🎵 TikTok',
-        x: '🐦 X',
-        simulator: '🧪 Simulatore',
-      };
-
       const icon = platformIcons[c.platform.toLowerCase()] || `🌐 ${c.platform}`;
-
       const statusLabels = {
         pending: 'In Attesa Approvazione',
         approved: 'Approvato',
@@ -373,14 +412,13 @@ document.addEventListener('DOMContentLoaded', () => {
         auto_replied: 'Auto-Pilot Inviato',
       };
 
-      const statusText = statusLabels[c.status] || c.status;
       const displayReply = c.final_reply || c.proposed_reply;
 
       return `
         <div class="feed-card" id="card-${c.id}">
           <div class="feed-card-header">
             <span class="card-platform-badge">${icon}</span>
-            <span class="status-badge ${c.status}">${statusText}</span>
+            <span class="status-badge ${c.status}">${statusLabels[c.status] || c.status}</span>
           </div>
 
           <div class="feed-author">@${escapeHtml(c.author_username)} ${c.post_snippet ? `· <span style="font-weight:400;color:var(--text-dim);font-size:0.8rem">su "${escapeHtml(c.post_snippet)}"</span>` : ''}</div>
@@ -390,8 +428,8 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
 
           <div class="feed-proposed-box">
-            <span class="proposed-label">${c.status === 'pending' ? '🤖 Proposta Risposta AI:' : '📤 Risposta Finale:'}</span>
-            <p class="proposed-text">${escapeHtml(displayReply || 'Nessuna risposta generata')}</p>
+            <span class="proposed-label">${c.status === 'pending' ? '🤖 Proposta Risposta AI:' : '📤 Risposta Finale Pubblicata:'}</span>
+            <p class="proposed-text">${escapeHtml(displayReply || 'Nessuna risposta disponibile')}</p>
           </div>
 
           ${c.status === 'pending' ? `
@@ -406,17 +444,82 @@ document.addEventListener('DOMContentLoaded', () => {
     }).join('');
   }
 
-  btnRefreshFeed.addEventListener('click', loadComments);
+  filterChips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      filterChips.forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      activeFilter = chip.dataset.filter;
+      renderFeed(filterComments(activeProfileComments));
+    });
+  });
 
-  // --- 10. Comment Actions (Window Bindings) ---
+  btnRefreshFeed.addEventListener('click', loadActiveProfileComments);
+
+  // Ingest Real Comment Modal
+  btnOpenIngestModal.addEventListener('click', () => ingestModal.classList.remove('hidden'));
+  btnCloseIngestModal.addEventListener('click', () => ingestModal.classList.add('hidden'));
+  btnCancelIngestModal.addEventListener('click', () => ingestModal.classList.add('hidden'));
+
+  ingestCommentForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!activeProfile) return;
+
+    const payload = {
+      profileId: activeProfile.id,
+      platform: document.getElementById('ingestPlatform').value,
+      authorUsername: document.getElementById('ingestAuthor').value.trim(),
+      postSnippet: document.getElementById('ingestPostSnippet').value.trim(),
+      commentText: document.getElementById('ingestText').value.trim(),
+    };
+
+    const submitBtn = ingestCommentForm.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Generazione AI in corso...';
+
+    try {
+      // Ingest directly via webhook receiver or internal creation
+      const res = await fetch('/api/webhooks/meta', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          object: payload.platform === 'facebook' ? 'page' : 'instagram',
+          entry: [{
+            id: activeProfile.id,
+            changes: [{
+              field: 'comments',
+              value: {
+                item: 'comment',
+                verb: 'add',
+                message: payload.commentText,
+                from: { name: payload.authorUsername },
+                media: { id: payload.postSnippet || 'post_123' },
+              }
+            }]
+          }]
+        }),
+      });
+
+      showToast('⚡ Commento registrato e processato con AI!', 'success');
+      ingestModal.classList.add('hidden');
+      ingestCommentForm.reset();
+      setTimeout(loadActiveProfileComments, 1200);
+    } catch (err) {
+      showToast('❌ Errore durante la registrazione', 'error');
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Processa con AI & Notifica Telegram';
+    }
+  });
+
+  // Action Window Bindings
   window.approveComment = async (id) => {
     try {
       const res = await fetch(`/api/comments/${id}/approve`, { method: 'POST' });
       const data = await res.json();
       if (data.success) {
-        showToast('✅ Risposta approvata e memorizzata!', 'success');
-        loadComments();
-        loadMemory();
+        showToast('✅ Risposta approvata e memorizzata nel profilo!', 'success');
+        loadActiveProfileComments();
+        loadActiveProfileMemory();
       }
     } catch (err) {
       showToast('❌ Errore durante l\'approvazione', 'error');
@@ -429,15 +532,15 @@ document.addEventListener('DOMContentLoaded', () => {
       const data = await res.json();
       if (data.success) {
         showToast('❌ Commento scartato', 'info');
-        loadComments();
+        loadActiveProfileComments();
       }
     } catch (err) {
-      showToast('❌ Errore durante l\'operazione', 'error');
+      showToast('❌ Errore', 'error');
     }
   };
 
   window.openEditModal = (id) => {
-    const comment = currentComments.find(c => c.id === id);
+    const comment = activeProfileComments.find(c => c.id === id);
     if (!comment) return;
 
     activeModalCommentId = id;
@@ -463,38 +566,89 @@ document.addEventListener('DOMContentLoaded', () => {
       });
       const data = await res.json();
       if (data.success) {
-        showToast('✅ Risposta personalizzata salvata e memorizzata!', 'success');
+        showToast('✅ Risposta salvata e memorizzata!', 'success');
         replyModal.classList.add('hidden');
-        loadComments();
-        loadMemory();
+        loadActiveProfileComments();
+        loadActiveProfileMemory();
+      }
+    } catch (err) {
+      showToast('❌ Errore salvataggio', 'error');
+    }
+  });
+
+  // --- 6. Tab 3: Guardrails del Profilo ---
+  function populateProfileGuardrails() {
+    if (!activeProfile) return;
+    profToneOfVoice.value = activeProfile.tone_of_voice || 'friendly';
+    profMaxReplyLength.value = activeProfile.max_reply_length || 280;
+    charLengthDisplay.textContent = activeProfile.max_reply_length || 280;
+    profCustomTone.value = activeProfile.custom_tone_instructions || '';
+    profBusinessKnowledge.value = activeProfile.business_knowledge || '';
+    profForbiddenWords.value = activeProfile.forbidden_words || '';
+    profTelegramToken.value = activeProfile.telegram_bot_token || '';
+    profTelegramChatId.value = activeProfile.telegram_chat_id || '';
+    profAutoPilotToggle.checked = Boolean(activeProfile.auto_pilot_enabled);
+  }
+
+  profMaxReplyLength.addEventListener('input', (e) => {
+    charLengthDisplay.textContent = e.target.value;
+  });
+
+  profileGuardrailsForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!activeProfile) return;
+
+    const payload = {
+      tone_of_voice: profToneOfVoice.value,
+      max_reply_length: parseInt(profMaxReplyLength.value, 10),
+      custom_tone_instructions: profCustomTone.value,
+      business_knowledge: profBusinessKnowledge.value,
+      forbidden_words: profForbiddenWords.value,
+      telegram_bot_token: profTelegramToken.value,
+      telegram_chat_id: profTelegramChatId.value,
+      auto_pilot_enabled: profAutoPilotToggle.checked ? 1 : 0,
+    };
+
+    try {
+      const res = await fetch(`/api/profiles/${activeProfile.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast(`🛡️ Regole aggiornate per "${activeProfile.name}"!`, 'success');
+        activeProfile = data.profile;
+        updateHeaderAndBanner();
       }
     } catch (err) {
       showToast('❌ Errore durante il salvataggio', 'error');
     }
   });
 
-  // --- 11. Memory / Learning Tab ---
-  async function loadMemory() {
+  // --- 7. Tab 4: Memoria AI del Profilo ---
+  async function loadActiveProfileMemory() {
+    if (!activeProfile) return;
     try {
-      const res = await fetch('/api/comments/approved-memory');
+      const res = await fetch(`/api/comments/approved-memory?profileId=${activeProfile.id}`);
       const data = await res.json();
       if (!data.success) return;
 
-      currentMemory = data.memory;
-      renderMemory(currentMemory);
-      updateMetrics();
+      activeProfileMemory = data.memory;
+      statMemoryItems.textContent = activeProfileMemory.length;
+      memoryCountBadge.textContent = activeProfileMemory.length;
+      renderMemory(activeProfileMemory);
     } catch (err) {
       console.error('Error loading memory:', err);
     }
   }
 
   function renderMemory(items) {
-    memoryCountBadge.textContent = items.length;
     if (!items || items.length === 0) {
       memoryList.innerHTML = `
         <div class="empty-state">
           <span class="empty-icon">🌱</span>
-          <p>Nessun esempio memorizzato al momento.<br>Appena approverai la tua prima risposta sul feed o da Telegram, verrà salvata qui per addestrare l'AI!</p>
+          <p>Nessun esempio memorizzato per "${escapeHtml(activeProfile.name)}".<br>Quando approverai o modificherai una risposta nell'inbox, verrà salvata qui per addestrare l'AI su questo brand.</p>
         </div>
       `;
       return;
@@ -512,16 +666,110 @@ document.addEventListener('DOMContentLoaded', () => {
     `).join('');
   }
 
-  btnRefreshMemory.addEventListener('click', loadMemory);
+  btnRefreshMemory.addEventListener('click', loadActiveProfileMemory);
 
-  // --- 12. Metrics Counter ---
-  function updateMetrics() {
-    metricTotalComments.textContent = currentComments.length;
-    const approvedCount = currentComments.filter(c => c.status === 'approved' || c.status === 'modified' || c.status === 'auto_replied').length;
-    metricApproved.textContent = approvedCount;
-    metricMemory.textContent = currentMemory.length;
-    memoryCountBadge.textContent = currentMemory.length;
+  // --- 8. Tab 5: BYOK & Global Telegram ---
+  async function loadGlobalSettings() {
+    try {
+      const res = await fetch('/api/settings');
+      const data = await res.json();
+      if (!data.success) return;
+
+      const s = data.settings;
+      defaultAiProvider.value = s.default_ai_provider || 'openai';
+
+      updateBadge(badgeOpenAI, s.has_openai, s.api_key_openai_masked);
+      updateBadge(badgeGemini, s.has_gemini, s.api_key_gemini_masked);
+      updateBadge(badgeAnthropic, s.has_anthropic, s.api_key_anthropic_masked);
+      updateBadge(badgeGlobalTelegram, s.has_telegram, s.telegram_bot_token_masked);
+    } catch (err) {
+      console.error('Error loading global settings:', err);
+    }
   }
+
+  function updateBadge(badgeEl, isConfigured, maskedVal) {
+    if (!badgeEl) return;
+    if (isConfigured) {
+      badgeEl.className = 'key-status-badge active';
+      badgeEl.textContent = `Configurata (${maskedVal})`;
+    } else {
+      badgeEl.className = 'key-status-badge';
+      badgeEl.textContent = 'Non configurata';
+    }
+  }
+
+  globalByokForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const payload = {
+      default_ai_provider: defaultAiProvider.value,
+    };
+    if (keyOpenAI.value) payload.api_key_openai = keyOpenAI.value;
+    if (keyGemini.value) payload.api_key_gemini = keyGemini.value;
+    if (keyAnthropic.value) payload.api_key_anthropic = keyAnthropic.value;
+
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast('✅ Chiavi LLM salvate con successo!', 'success');
+        keyOpenAI.value = '';
+        keyGemini.value = '';
+        keyAnthropic.value = '';
+        loadGlobalSettings();
+      }
+    } catch (err) {
+      showToast('❌ Errore durante il salvataggio', 'error');
+    }
+  });
+
+  globalTelegramForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const payload = {};
+    if (globalTelegramToken.value) payload.global_telegram_bot_token = globalTelegramToken.value;
+
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast('✅ Token Telegram globale salvato!', 'success');
+        globalTelegramToken.value = '';
+        loadGlobalSettings();
+      }
+    } catch (err) {
+      showToast('❌ Errore durante il salvataggio', 'error');
+    }
+  });
+
+  btnTestGlobalTelegram.addEventListener('click', async () => {
+    btnTestGlobalTelegram.textContent = 'Invio in corso...';
+    try {
+      const res = await fetch('/api/settings/test-telegram', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token: globalTelegramToken.value || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast('🎉 Messaggio inviato su Telegram!', 'success');
+      } else {
+        showToast(`❌ Errore: ${data.error}`, 'error');
+      }
+    } catch (err) {
+      showToast('❌ Impossibile contattare Telegram', 'error');
+    } finally {
+      btnTestGlobalTelegram.textContent = '📲 Invia Messaggio di Test';
+    }
+  });
 
   function escapeHtml(str) {
     return (str || '')
@@ -531,15 +779,14 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Initial Load
-  loadSettings();
-  loadComments();
-  loadMemory();
+  loadProfiles();
+  loadGlobalSettings();
 
-  // Polling feed every 8s
+  // Periodic inbox refresh every 10s
   setInterval(() => {
     const activeTab = document.querySelector('.nav-tab.active');
     if (activeTab && activeTab.dataset.tab === 'tab-inbox') {
-      loadComments();
+      loadActiveProfileComments();
     }
-  }, 8000);
+  }, 10000);
 });

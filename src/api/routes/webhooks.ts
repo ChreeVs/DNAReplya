@@ -1,5 +1,4 @@
 import { Router, Request, Response } from 'express';
-import crypto from 'crypto';
 import { config } from '../../config/index.js';
 import { dbRepository } from '../../db/index.js';
 import { AIOrchestrator } from '../../services/ai/orchestrator.js';
@@ -14,33 +13,45 @@ router.get('/meta', (req: Request, res: Response) => {
   const challenge = req.query['hub.challenge'];
 
   if (mode === 'subscribe' && token === config.meta.verifyToken) {
-    console.log('[Meta Webhook] Verification successful');
+    console.log('[Meta Webhook] Verifica riuscita');
     return res.status(200).send(challenge);
   }
 
-  console.warn('[Meta Webhook] Verification token mismatch');
+  console.warn('[Meta Webhook] Token di verifica non valido');
   return res.sendStatus(403);
 });
 
 // Meta Webhook Event Ingestion
 router.post('/meta', (req: Request, res: Response) => {
-  // CRITICAL RULE: Respond 200 OK immediately within 1-2 seconds
+  // CRITICAL: Respond HTTP 200 OK immediately within 2 seconds
   res.status(200).send('EVENT_RECEIVED');
 
   const body = req.body;
   if (body.object === 'page' || body.object === 'instagram') {
-    // Process asynchronously in background
     setImmediate(async () => {
       try {
         const entries = body.entry || [];
         for (const entry of entries) {
+          const entryId = entry.id; // page id or ig business account id
           const changes = entry.changes || [];
+
+          // Try to locate which client profile owns this external account
+          const platform = body.object === 'instagram' ? 'instagram' : 'facebook';
+          const matchedAccount = dbRepository.findAccountByPlatformAndExternalId(platform, String(entryId));
+          
+          let profileId = matchedAccount ? matchedAccount.profile_id : '';
+          if (!profileId) {
+            const allProfiles = dbRepository.getAllProfiles();
+            profileId = allProfiles[0]?.id || 'prof_default';
+          }
+
+          const profile = dbRepository.getProfileById(profileId);
+
           for (const change of changes) {
             const val = change.value;
-            // Check for comment additions
             if (val && (change.field === 'feed' || change.field === 'comments')) {
-              const itemType = val.item; // 'comment'
-              const verb = val.verb; // 'add'
+              const itemType = val.item;
+              const verb = val.verb;
 
               if (verb === 'add' || itemType === 'comment') {
                 const commentText = val.message || val.text;
@@ -49,22 +60,22 @@ router.post('/meta', (req: Request, res: Response) => {
                 const postId = val.post_id || val.media?.id || '';
 
                 if (commentText) {
-                  const platform = body.object === 'instagram' ? 'instagram' : 'facebook';
-
-                  // 1. Generate AI Reply
+                  // 1. Generate AI Reply using this Profile's rules and memory
                   const aiResult = await AIOrchestrator.generateReply({
+                    profileId,
                     platform,
                     authorUsername,
                     commentText,
                   });
 
-                  // 2. Insert into DB
-                  const settings = dbRepository.getSettings();
-                  const isAutoPilot = Boolean(settings.auto_pilot_enabled);
+                  // 2. Check if this profile has auto-pilot enabled
+                  const isAutoPilot = Boolean(profile?.auto_pilot_enabled);
                   const initialStatus = isAutoPilot ? 'auto_replied' : 'pending';
 
                   const record = dbRepository.insertComment({
                     id: commentId,
+                    profile_id: profileId,
+                    social_account_id: matchedAccount?.id || null,
                     platform,
                     platform_post_id: postId,
                     platform_comment_id: commentId,
@@ -75,12 +86,13 @@ router.post('/meta', (req: Request, res: Response) => {
                     status: initialStatus,
                   });
 
-                  // 3. Dispatch to Telegram
+                  // 3. Dispatch to Telegram (with Profile details)
                   if (!isAutoPilot) {
                     await TelegramBotService.sendCommentNotification(record);
                   } else {
                     // Save to memory
                     dbRepository.saveApprovedReply({
+                      profile_id: profileId,
                       comment_id: commentId,
                       platform,
                       comment_text: commentText,
@@ -99,13 +111,11 @@ router.post('/meta', (req: Request, res: Response) => {
   }
 });
 
-// Telegram Webhook (Alternative to Long Polling in Production)
+// Telegram Webhook
 router.post('/telegram', async (req: Request, res: Response) => {
   res.status(200).send('OK');
 
-  const settings = dbRepository.getSettings();
-  const token = settings.telegram_bot_token || process.env.TELEGRAM_BOT_TOKEN;
-
+  const { token } = TelegramBotService.getTelegramCredentials();
   if (token && req.body) {
     setImmediate(async () => {
       try {

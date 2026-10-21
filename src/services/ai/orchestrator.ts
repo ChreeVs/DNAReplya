@@ -1,38 +1,41 @@
-import { dbRepository, AppSettings } from '../../db/index.js';
+import { dbRepository, ProfileRecord, GlobalSettings } from '../../db/index.js';
 import { AIProvider, GenerateReplyRequest, GenerateReplyResponse } from './types.js';
 
 export class AIOrchestrator {
   /**
-   * Generates a context-aware, guardrail-compliant reply using the configured LLM and few-shot examples.
+   * Generates a context-aware, guardrail-compliant reply using the configured LLM and profile memory.
    */
   static async generateReply(req: GenerateReplyRequest): Promise<GenerateReplyResponse> {
-    const settings = dbRepository.getSettings();
-    const provider = (settings.ai_provider || 'openai') as AIProvider;
-    const model = settings.ai_model || this.getDefaultModel(provider);
+    const profile = dbRepository.getProfileById(req.profileId);
+    const globalSettings = dbRepository.getGlobalSettings();
 
-    // 1. Retrieve dynamic few-shot examples from approved past interactions
-    const pastReplies = dbRepository.getApprovedReplies(5);
+    const provider = (profile?.ai_provider || globalSettings.default_ai_provider || 'openai') as AIProvider;
+    const model = profile?.ai_model || this.getDefaultModel(provider);
 
-    // 2. Build the system prompt with guardrails and knowledge limits
-    const systemPrompt = this.buildSystemPrompt(settings, req.platform, pastReplies);
+    // 1. Retrieve dynamic few-shot examples strictly isolated for this client/profile
+    const pastReplies = dbRepository.getApprovedRepliesByProfile(req.profileId, 5);
+
+    // 2. Build system prompt tailored to this profile's brand persona and boundaries
+    const systemPrompt = this.buildSystemPrompt(profile, req.platform, pastReplies);
 
     // 3. Build user prompt
     const userPrompt = `
+CLIENTE / BRAND: ${profile ? profile.name : 'Brand'}
 PIATTAFORMA: ${req.platform.toUpperCase()}
 AUTORE DEL COMMENTO: @${req.authorUsername}
-${req.postSnippet ? `CONTESTO DEL POST: "${req.postSnippet}"` : ''}
+${req.postSnippet ? `POST DI RIFERIMENTO: "${req.postSnippet}"` : ''}
 TESTO DEL COMMENTO RICEVUTO:
 "${req.commentText}"
 
-Genera ora la migliore risposta per questo commento, rispettando tutte le regole, i limiti di conoscenza e lo stile indicato. Rispondi SOLO con il testo del messaggio da pubblicare, senza virgolette o spiegazioni aggiuntive.
+Elabora ora la migliore risposta rispettando rigorosamente le linee guida del brand, il tono e i limiti imposti. Rispondi SOLO con il testo del messaggio finale senza virgolette né spiegazioni.
 `.trim();
 
-    // 4. Resolve API key
-    const apiKey = this.getApiKey(settings, provider);
+    // 4. Resolve API Key from global settings or environment
+    const apiKey = this.getApiKey(globalSettings, provider);
 
     if (!apiKey) {
       return {
-        proposedReply: `[Bozza Automatica]: Ciao @${req.authorUsername}, grazie per il tuo commento! (Nota: Inserisci una chiave API in Dashboard per attivare l'AI ${provider.toUpperCase()})`,
+        proposedReply: `[Bozza]: Ciao @${req.authorUsername}, grazie per il tuo commento! (Configura la chiave API ${provider.toUpperCase()} nella Dashboard per attivare l'AI).`,
         modelUsed: 'mock-no-key',
         providerUsed: provider,
         fewShotExamplesCount: pastReplies.length,
@@ -41,8 +44,8 @@ Genera ora la migliore risposta per questo commento, rispettando tutte le regole
 
     try {
       let reply = '';
-      if (provider === 'openai' || provider === 'groq') {
-        reply = await this.callOpenAICompatible(provider, model, apiKey, systemPrompt, userPrompt);
+      if (provider === 'openai') {
+        reply = await this.callOpenAI(model, apiKey, systemPrompt, userPrompt);
       } else if (provider === 'gemini') {
         reply = await this.callGemini(model, apiKey, systemPrompt, userPrompt);
       } else if (provider === 'anthropic') {
@@ -51,9 +54,10 @@ Genera ora la migliore risposta per questo commento, rispettando tutte le regole
         throw new Error(`Provider non supportato: ${provider}`);
       }
 
-      // Enforce max length constraint
-      if (settings.max_reply_length > 0 && reply.length > settings.max_reply_length) {
-        reply = reply.substring(0, settings.max_reply_length).trim();
+      // Max length truncation
+      const maxLen = profile?.max_reply_length || 280;
+      if (maxLen > 0 && reply.length > maxLen) {
+        reply = reply.substring(0, maxLen).trim();
       }
 
       return {
@@ -63,9 +67,9 @@ Genera ora la migliore risposta per questo commento, rispettando tutte le regole
         fewShotExamplesCount: pastReplies.length,
       };
     } catch (err: any) {
-      console.error(`[AIOrchestrator] Error generating reply with ${provider}:`, err.message);
+      console.error(`[AIOrchestrator] Errore risposta AI (${provider}):`, err.message);
       return {
-        proposedReply: `[Errore AI ${provider}]: ${err.message}. Verifica la chiave API e la connessione.`,
+        proposedReply: `[Errore AI ${provider}]: ${err.message}. Controlla la chiave API in Configurazione.`,
         modelUsed: model,
         providerUsed: provider,
         fewShotExamplesCount: pastReplies.length,
@@ -73,37 +77,37 @@ Genera ora la migliore risposta per questo commento, rispettando tutte le regole
     }
   }
 
-  private static buildSystemPrompt(settings: AppSettings, platform: string, pastReplies: any[]): string {
+  private static buildSystemPrompt(profile: ProfileRecord | undefined, platform: string, pastReplies: any[]): string {
     const toneMap: Record<string, string> = {
-      friendly: 'Amichevole, caloroso, empatico, con emoji appropriate ma senza esagerare.',
-      professional: 'Formale, professionale, chiaro, cordiale e istituzionale. Limita o evita emoji.',
-      concise: 'Estremamente sintetico, rapido, dritto al punto, senza fronzoli.',
-      humorous: 'Brillante, simpatico, ironico con garbo, amichevole.',
-      custom: settings.custom_tone_instructions || 'Naturale e autentico.',
+      friendly: 'Amichevole, caloroso, empatico, con emoji appropriate ma con misura.',
+      professional: 'Formale, professionale, chiaro, cordiale e istituzionale.',
+      concise: 'Estremamente sintetico, rapido, dritto al punto, senza giri di parole.',
+      humorous: 'Simpatico, brillante, ironico con garbo.',
+      custom: profile?.custom_tone_instructions || 'Naturale e autentico.',
     };
 
-    const chosenTone = toneMap[settings.tone_of_voice] || toneMap.friendly;
+    const chosenTone = profile ? (toneMap[profile.tone_of_voice] || toneMap.friendly) : toneMap.friendly;
 
-    let prompt = `Sei l'assistente ufficiale dedicato alla gestione delle risposte ai commenti sui canali social del nostro brand.
-Il tuo compito è elaborare una risposta di alta qualità, calibrata sul commento ricevuto.
+    let prompt = `Sei l'assistente social media manager per "${profile?.name || 'il nostro Brand'}".
+Il tuo obiettivo è rispondere ai commenti social rispettando l'identità del cliente.
 
-### LINEE GUIDA GENERALI:
-1. Piattaforma attuale: ${platform.toUpperCase()}. Adatta il formato e lo stile (es. brevità su X, professionale su LinkedIn, dinamico ed empatico su Instagram/TikTok).
+### GUIDELINES:
+1. Piattaforma: ${platform.toUpperCase()}.
 2. Tono di voce: ${chosenTone}
-${settings.custom_tone_instructions ? `3. Istruzioni specifiche di stile: ${settings.custom_tone_instructions}` : ''}
-4. Lunghezza massima: massimo ${settings.max_reply_length || 280} caratteri.
+${profile?.custom_tone_instructions ? `3. Istruzioni di stile specifiche per questo cliente: ${profile.custom_tone_instructions}` : ''}
+4. Lunghezza massima risposta: ${profile?.max_reply_length || 280} caratteri.
 
-### LIMITI DI CONOSCENZA & GUARDRAILS (DA RISPETTARE TASSATIVAMENTE):
-${settings.business_knowledge ? `INFORMAZIONI AZIENDALI & FAQ (Usa SOLO queste informazioni per prezzi, orari, spedizioni, policy):\n${settings.business_knowledge}` : 'Rispondi con cortesia invitando a contattare il supporto o il sito web per dettagli specifici.'}
-${settings.forbidden_words ? `PAROLE O ARGOMENTI VIETATI (Non usare mai questi termini):\n${settings.forbidden_words}` : ''}
-- Non inventare informazioni non presenti nella base di conoscenza. Se non conosci un dettaglio tecnico o privato, invita cortesemente l'utente a scrivere in Direct Message (DM) o all'assistenza.
-- Mantieni sempre la calma, anche di fronte a commenti provocatori o critici.
+### LIMITI & BASE DI CONOSCENZA DEL CLIENTE (FONTE UNICA DI VERITÀ):
+${profile?.business_knowledge ? `USA ESCLUSIVAMENTE QUESTE INFORMAZIONI PER RISPONDERE A DOMANDE SU PRODOTTI, PREZZI, SPEDIZIONI O POLICY:\n${profile.business_knowledge}` : 'Rispondi con cortesia invitando a contattare il supporto o il sito web per dettagli specifici.'}
+${profile?.forbidden_words ? `TERMINI O ARGOMENTI VIETATI (NON USARLI MAI):\n${profile.forbidden_words}` : ''}
+- Non inventare mai sconti o informazioni inesistenti.
+- Se una domanda richiede dati privati, invita gentilmente l'utente a scrivere in Direct Message (DM).
 `;
 
-    // Inject Few-Shot Examples (Learning Loop)
+    // Dynamic Few-Shot RAG from past approved interactions for this profile
     if (pastReplies.length > 0) {
-      prompt += `\n### ESEMPI DI RISPOSTE REALI APPROVATE IN PASSATO DALL'OPERATORE UMANO:\n`;
-      prompt += `Impara da questi esempi per replicare esattamente lo stile, le abitudini e le formule approvate:\n`;
+      prompt += `\n### ESEMPI DI RISPOSTE REALI APPROVATE IN PASSATO PER ${profile?.name?.toUpperCase() || 'QUESTO CLIENTE'}:\n`;
+      prompt += `Replica fedelmente questo stile approvato:\n`;
       pastReplies.forEach((item, index) => {
         prompt += `\n[Esempio ${index + 1} - ${item.platform.toUpperCase()}]\nCommento: "${item.comment_text}"\nRisposta Approvata: "${item.approved_reply}"\n`;
       });
@@ -112,12 +116,11 @@ ${settings.forbidden_words ? `PAROLE O ARGOMENTI VIETATI (Non usare mai questi t
     return prompt;
   }
 
-  private static getApiKey(settings: AppSettings, provider: AIProvider): string {
+  private static getApiKey(globalSettings: GlobalSettings, provider: AIProvider): string {
     switch (provider) {
-      case 'openai': return settings.api_key_openai || process.env.OPENAI_API_KEY || '';
-      case 'gemini': return settings.api_key_gemini || process.env.GEMINI_API_KEY || '';
-      case 'anthropic': return settings.api_key_anthropic || process.env.ANTHROPIC_API_KEY || '';
-      case 'groq': return settings.api_key_groq || process.env.GROQ_API_KEY || '';
+      case 'openai': return globalSettings.api_key_openai || process.env.OPENAI_API_KEY || '';
+      case 'gemini': return globalSettings.api_key_gemini || process.env.GEMINI_API_KEY || '';
+      case 'anthropic': return globalSettings.api_key_anthropic || process.env.ANTHROPIC_API_KEY || '';
       default: return '';
     }
   }
@@ -127,23 +130,17 @@ ${settings.forbidden_words ? `PAROLE O ARGOMENTI VIETATI (Non usare mai questi t
       case 'openai': return 'gpt-4o-mini';
       case 'gemini': return 'gemini-1.5-flash';
       case 'anthropic': return 'claude-3-5-sonnet-20241022';
-      case 'groq': return 'llama-3.1-70b-versatile';
       default: return 'gpt-4o-mini';
     }
   }
 
-  private static async callOpenAICompatible(
-    provider: 'openai' | 'groq',
+  private static async callOpenAI(
     model: string,
     apiKey: string,
     systemPrompt: string,
     userPrompt: string
   ): Promise<string> {
-    const baseUrl = provider === 'groq'
-      ? 'https://api.groq.com/openai/v1/chat/completions'
-      : 'https://api.openai.com/v1/chat/completions';
-
-    const res = await fetch(baseUrl, {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -160,8 +157,8 @@ ${settings.forbidden_words ? `PAROLE O ARGOMENTI VIETATI (Non usare mai questi t
     });
 
     if (!res.ok) {
-      const errText = await res.text();
-      throw new Error(`API error (${res.status}): ${errText}`);
+      const err = await res.text();
+      throw new Error(`OpenAI error (${res.status}): ${err}`);
     }
 
     const data = await res.json() as any;
@@ -175,28 +172,19 @@ ${settings.forbidden_words ? `PAROLE O ARGOMENTI VIETATI (Non usare mai questi t
     userPrompt: string
   ): Promise<string> {
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-
     const res = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        systemInstruction: {
-          parts: [{ text: systemPrompt }],
-        },
-        contents: [
-          {
-            parts: [{ text: userPrompt }],
-          },
-        ],
-        generationConfig: {
-          temperature: 0.7,
-        },
+        systemInstruction: { parts: [{ text: systemPrompt }] },
+        contents: [{ parts: [{ text: userPrompt }] }],
+        generationConfig: { temperature: 0.7 },
       }),
     });
 
     if (!res.ok) {
-      const errText = await res.text();
-      throw new Error(`Gemini API error (${res.status}): ${errText}`);
+      const err = await res.text();
+      throw new Error(`Gemini error (${res.status}): ${err}`);
     }
 
     const data = await res.json() as any;
@@ -226,8 +214,8 @@ ${settings.forbidden_words ? `PAROLE O ARGOMENTI VIETATI (Non usare mai questi t
     });
 
     if (!res.ok) {
-      const errText = await res.text();
-      throw new Error(`Anthropic API error (${res.status}): ${errText}`);
+      const err = await res.text();
+      throw new Error(`Claude error (${res.status}): ${err}`);
     }
 
     const data = await res.json() as any;

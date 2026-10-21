@@ -3,22 +3,43 @@ import { dbRepository } from '../../db/index.js';
 
 const router = Router();
 
-// GET recent comments
+// GET comments (optionally filtered by profileId)
 router.get('/', (req: Request, res: Response) => {
   try {
+    const profileId = req.query.profileId as string;
     const limit = parseInt(req.query.limit as string, 10) || 50;
-    const comments = dbRepository.getRecentComments(limit);
+
+    let comments: any[] = [];
+    if (profileId) {
+      comments = dbRepository.getCommentsByProfile(profileId, limit);
+    } else {
+      // Return comments for first profile if not specified
+      const profiles = dbRepository.getAllProfiles();
+      if (profiles.length > 0) {
+        comments = dbRepository.getCommentsByProfile(profiles[0].id, limit);
+      }
+    }
+
     res.json({ success: true, comments });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// GET approved replies (Learning Memory Store)
+// GET approved replies memory (isolated per profile)
 router.get('/approved-memory', (req: Request, res: Response) => {
   try {
+    const profileId = req.query.profileId as string;
     const limit = parseInt(req.query.limit as string, 10) || 50;
-    const memory = dbRepository.getApprovedReplies(limit);
+
+    if (!profileId) {
+      const profiles = dbRepository.getAllProfiles();
+      const firstId = profiles[0]?.id;
+      const memory = firstId ? dbRepository.getApprovedRepliesByProfile(firstId, limit) : [];
+      return res.json({ success: true, memory });
+    }
+
+    const memory = dbRepository.getApprovedRepliesByProfile(profileId, limit);
     res.json({ success: true, memory });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
@@ -42,15 +63,16 @@ router.post('/:id/approve', (req: Request, res: Response) => {
       replied_at: new Date().toISOString(),
     });
 
-    // Save to learning memory
+    // Save to profile-isolated learning memory!
     dbRepository.saveApprovedReply({
+      profile_id: comment.profile_id,
       comment_id: comment.id,
       platform: comment.platform,
       comment_text: comment.comment_text,
       approved_reply: finalReply,
     });
 
-    res.json({ success: true, message: 'Commento approvato e salvato in memoria' });
+    res.json({ success: true, message: 'Risposta approvata e memorizzata per questo profilo' });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }

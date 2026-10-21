@@ -8,17 +8,35 @@ export class TelegramBotService {
   private static pendingEdits: Map<string, string> = new Map(); // chatId -> commentId
 
   /**
+   * Resolves bot token and target chat ID for a given profile or fallback to global settings
+   */
+  static getTelegramCredentials(profileId?: string): { token: string; chatId: string } {
+    const globalSettings = dbRepository.getGlobalSettings();
+    let token = globalSettings.global_telegram_bot_token || process.env.TELEGRAM_BOT_TOKEN || '';
+    let chatId = process.env.TELEGRAM_ADMIN_CHAT_ID || '';
+
+    if (profileId) {
+      const profile = dbRepository.getProfileById(profileId);
+      if (profile?.telegram_bot_token) token = profile.telegram_bot_token;
+      if (profile?.telegram_chat_id) chatId = profile.telegram_chat_id;
+    }
+
+    return { token, chatId };
+  }
+
+  /**
    * Sends a structured comment notification to Telegram with inline approval buttons
    */
   static async sendCommentNotification(comment: CommentRecord): Promise<number | null> {
-    const settings = dbRepository.getSettings();
-    const token = settings.telegram_bot_token || process.env.TELEGRAM_BOT_TOKEN;
-    const chatId = settings.telegram_admin_chat_id || process.env.TELEGRAM_ADMIN_CHAT_ID;
+    const { token, chatId } = this.getTelegramCredentials(comment.profile_id);
 
     if (!token || !chatId) {
-      console.log(`[TelegramBotService] Token o Chat ID non configurati. Notifica saltata.`);
+      console.log(`[TelegramBotService] Token o Chat ID non configurati per il profilo ${comment.profile_id}.`);
       return null;
     }
+
+    const profile = dbRepository.getProfileById(comment.profile_id);
+    const profileName = profile ? profile.name : 'Profilo';
 
     const platformIcons: Record<string, string> = {
       instagram: '📸 Instagram',
@@ -26,14 +44,14 @@ export class TelegramBotService {
       threads: '🧵 Threads',
       linkedin: '💼 LinkedIn',
       tiktok: '🎵 TikTok',
-      x: '🐦 X (Twitter)',
-      simulator: '🧪 Simulatore',
+      x: '🐦 X',
     };
 
     const icon = platformIcons[comment.platform.toLowerCase()] || `🌐 ${comment.platform}`;
 
     const text = `
-🔔 <b>Nuovo Commento su ${icon}</b>
+🔔 <b>Nuovo Commento per [${this.escapeHtml(profileName)}]</b>
+Canale: <b>${icon}</b>
 
 👤 <b>Autore:</b> @${this.escapeHtml(comment.author_username)}
 ${comment.post_snippet ? `📌 <b>Post:</b> <i>"${this.escapeHtml(comment.post_snippet)}"</i>\n` : ''}
@@ -84,21 +102,17 @@ ${comment.post_snippet ? `📌 <b>Post:</b> <i>"${this.escapeHtml(comment.post_s
     }
   }
 
-  /**
-   * Starts background long polling for Telegram updates (ideal for local dev)
-   */
   static startPolling(): void {
     if (this.isPolling) return;
-    const settings = dbRepository.getSettings();
-    const token = settings.telegram_bot_token || process.env.TELEGRAM_BOT_TOKEN;
+    const { token } = this.getTelegramCredentials();
 
     if (!token) {
-      console.log('[TelegramBotService] Polling non avviato: Bot Token non presente.');
+      console.log('[TelegramBotService] Polling Telegram non avviato (manca Bot Token).');
       return;
     }
 
     this.isPolling = true;
-    console.log('[TelegramBotService] Iniziato polling aggiornamenti Telegram...');
+    console.log('[TelegramBotService] Polling aggiornamenti Telegram avviato.');
     this.pollUpdates();
   }
 
@@ -112,9 +126,7 @@ ${comment.post_snippet ? `📌 <b>Post:</b> <i>"${this.escapeHtml(comment.post_s
 
   private static async pollUpdates(): Promise<void> {
     if (!this.isPolling) return;
-
-    const settings = dbRepository.getSettings();
-    const token = settings.telegram_bot_token || process.env.TELEGRAM_BOT_TOKEN;
+    const { token } = this.getTelegramCredentials();
 
     if (!token) {
       this.isPolling = false;
@@ -133,7 +145,7 @@ ${comment.post_snippet ? `📌 <b>Post:</b> <i>"${this.escapeHtml(comment.post_s
         }
       }
     } catch (err: any) {
-      // Ignore network timeout or connection drops, retry after a short pause
+      // Ignore network hiccup
     }
 
     if (this.isPolling) {
@@ -141,11 +153,8 @@ ${comment.post_snippet ? `📌 <b>Post:</b> <i>"${this.escapeHtml(comment.post_s
     }
   }
 
-  /**
-   * Processes incoming Telegram update (callback button clicks or user text replies)
-   */
   static async handleUpdate(update: any, token: string): Promise<void> {
-    // 1. Handle Inline Keyboard Callback Queries
+    // 1. Inline Buttons Callback Query
     if (update.callback_query) {
       const cb = update.callback_query;
       const data = cb.data as string;
@@ -156,7 +165,7 @@ ${comment.post_snippet ? `📌 <b>Post:</b> <i>"${this.escapeHtml(comment.post_s
       const comment = dbRepository.getCommentById(commentId);
 
       if (!comment) {
-        await this.answerCallback(token, cb.id, 'Commento non trovato nel database');
+        await this.answerCallback(token, cb.id, 'Commento non trovato');
         return;
       }
 
@@ -168,15 +177,16 @@ ${comment.post_snippet ? `📌 <b>Post:</b> <i>"${this.escapeHtml(comment.post_s
           replied_at: new Date().toISOString(),
         });
 
-        // Save to Learning Memory (Dynamic Few-Shot Store)
+        // Save to Learning Memory isolated for this client/profile!
         dbRepository.saveApprovedReply({
+          profile_id: comment.profile_id,
           comment_id: comment.id,
           platform: comment.platform,
           comment_text: comment.comment_text,
           approved_reply: comment.proposed_reply,
         });
 
-        await this.answerCallback(token, cb.id, '✅ Risposta approvata e pubblicata!');
+        await this.answerCallback(token, cb.id, '✅ Risposta approvata!');
         await this.editMessageText(
           token,
           chatId,
@@ -184,12 +194,13 @@ ${comment.post_snippet ? `📌 <b>Post:</b> <i>"${this.escapeHtml(comment.post_s
           `✅ <b>APPROVATO & PUBBLICATO SU ${comment.platform.toUpperCase()}</b>\n\n` +
           `💬 <b>Commento:</b> <i>"${this.escapeHtml(comment.comment_text)}"</i>\n` +
           `📤 <b>Risposta inviata:</b>\n<blockquote>"${this.escapeHtml(comment.proposed_reply)}"</blockquote>\n` +
-          `<i>(Memorizzato nel Knowledge Base per l'apprendimento futuro)</i>`
+          `<i>(Memorizzato nel profilo per l'apprendimento futuro)</i>`
         );
       } else if (action === 'regn') {
         // REGENERATE
-        await this.answerCallback(token, cb.id, '🔄 Rigenerazione in corso con LLM...');
+        await this.answerCallback(token, cb.id, '🔄 Rigenerazione in corso...');
         const newReply = await AIOrchestrator.generateReply({
+          profileId: comment.profile_id,
           platform: comment.platform,
           authorUsername: comment.author_username,
           commentText: comment.comment_text,
@@ -212,54 +223,41 @@ ${comment.post_snippet ? `📌 <b>Post:</b> <i>"${this.escapeHtml(comment.post_s
           cb.message?.reply_markup
         );
       } else if (action === 'edit') {
-        // REQUEST MANUAL EDIT
         this.pendingEdits.set(String(chatId), comment.id);
-        await this.answerCallback(token, cb.id, '✏️ Invia ora un messaggio con il testo della tua risposta');
+        await this.answerCallback(token, cb.id, '✏️ Invia ora il testo della tua risposta');
         await this.sendMessage(
           token,
           chatId,
-          `✏️ <b>Modalità Modifica</b> per il commento di @${comment.author_username}:\n` +
-          `Scrivi e invia qui sotto la risposta che desideri pubblicare.`
+          `✏️ <b>Modifica Risposta</b> per @${comment.author_username}:\nScrivi e invia la risposta desiderata:`
         );
       } else if (action === 'rjct') {
-        // REJECT
-        dbRepository.updateComment(comment.id, {
-          status: 'rejected',
-        });
-
-        await this.answerCallback(token, cb.id, '❌ Commento archiviato senza risposta.');
+        dbRepository.updateComment(comment.id, { status: 'rejected' });
+        await this.answerCallback(token, cb.id, '❌ Scartato');
         await this.editMessageText(
           token,
           chatId,
           messageId,
           `❌ <b>COMMENTO SCARTATO</b>\n\n` +
           `👤 <b>Autore:</b> @${this.escapeHtml(comment.author_username)}\n` +
-          `💬 <b>Commento:</b> <i>"${this.escapeHtml(comment.comment_text)}"</i>\n` +
-          `<i>(Nessuna risposta pubblicata)</i>`
+          `💬 <b>Commento:</b> <i>"${this.escapeHtml(comment.comment_text)}"</i>`
         );
       }
     }
 
-    // 2. Handle Text Messages (for manual edits or commands)
+    // 2. User Text Reply (Manual Edit)
     if (update.message?.text) {
       const chatId = String(update.message.chat.id);
       const text = update.message.text.trim();
 
       if (text === '/start' || text === '/status') {
-        const settings = dbRepository.getSettings();
         await this.sendMessage(
           token,
           chatId,
-          `🧬 <b>DNAReplya Bot Attivo!</b>\n\n` +
-          `🤖 <b>Provider AI:</b> ${settings.ai_provider.toUpperCase()} (${settings.ai_model})\n` +
-          `🎨 <b>Tono di voce:</b> ${settings.tone_of_voice}\n` +
-          `⚡ <b>Auto-Pilot:</b> ${settings.auto_pilot_enabled ? 'ATTIVO' : 'DISATTIVO (Richiede approvazione)'}\n` +
-          `Chat ID attuale: <code>${chatId}</code> (Usa questo nella Dashboard)`
+          `🧬 <b>DNAReplya Bot Attivo!</b>\nChat ID attuale: <code>${chatId}</code>`
         );
         return;
       }
 
-      // Check if user is replying to a pending edit
       if (this.pendingEdits.has(chatId)) {
         const commentId = this.pendingEdits.get(chatId)!;
         this.pendingEdits.delete(chatId);
@@ -272,8 +270,9 @@ ${comment.post_snippet ? `📌 <b>Post:</b> <i>"${this.escapeHtml(comment.post_s
             replied_at: new Date().toISOString(),
           });
 
-          // Save manual edit to Few-Shot store to learn from human correction!
+          // Save to profile's learning memory!
           dbRepository.saveApprovedReply({
+            profile_id: comment.profile_id,
             comment_id: comment.id,
             platform: comment.platform,
             comment_text: comment.comment_text,
@@ -284,8 +283,8 @@ ${comment.post_snippet ? `📌 <b>Post:</b> <i>"${this.escapeHtml(comment.post_s
             token,
             chatId,
             `✅ <b>Risposta Personalizzata Salvata & Pubblicata!</b>\n\n` +
-            `📤 <b>Testo inviato:</b>\n<blockquote>"${this.escapeHtml(text)}"</blockquote>\n` +
-            `<i>(L'AI ha memorizzato questa correzione per i prossimi commenti)</i>`
+            `📤 <b>Testo:</b>\n<blockquote>"${this.escapeHtml(text)}"</blockquote>\n` +
+            `<i>(L'AI ha memorizzato questa risposta nello stile del cliente)</i>`
           );
         }
       }

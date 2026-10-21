@@ -9,22 +9,20 @@ function maskKey(key?: string): string {
   return `${key.substring(0, 4)}...${key.substring(key.length - 4)}`;
 }
 
-// GET current settings (with masked API keys)
+// GET global settings (OpenAI, Gemini, Claude, Telegram)
 router.get('/', (req: Request, res: Response) => {
   try {
-    const raw = dbRepository.getSettings();
+    const raw = dbRepository.getGlobalSettings();
     const safeSettings = {
-      ...raw,
+      default_ai_provider: raw.default_ai_provider || 'openai',
       api_key_openai_masked: maskKey(raw.api_key_openai),
       api_key_gemini_masked: maskKey(raw.api_key_gemini),
       api_key_anthropic_masked: maskKey(raw.api_key_anthropic),
-      api_key_groq_masked: maskKey(raw.api_key_groq),
-      telegram_bot_token_masked: maskKey(raw.telegram_bot_token),
+      telegram_bot_token_masked: maskKey(raw.global_telegram_bot_token),
       has_openai: Boolean(raw.api_key_openai),
       has_gemini: Boolean(raw.api_key_gemini),
       has_anthropic: Boolean(raw.api_key_anthropic),
-      has_groq: Boolean(raw.api_key_groq),
-      has_telegram: Boolean(raw.telegram_bot_token && raw.telegram_admin_chat_id),
+      has_telegram: Boolean(raw.global_telegram_bot_token),
     };
     res.json({ success: true, settings: safeSettings });
   } catch (err: any) {
@@ -32,24 +30,14 @@ router.get('/', (req: Request, res: Response) => {
   }
 });
 
-// POST update settings
+// POST update global BYOK settings
 router.post('/', (req: Request, res: Response) => {
   try {
     const body = req.body;
-    const current = dbRepository.getSettings();
+    const current = dbRepository.getGlobalSettings();
 
-    // Preserve existing keys if user leaves them untouched (masked or empty)
     const updates: any = {
-      ai_provider: body.ai_provider ?? current.ai_provider,
-      ai_model: body.ai_model ?? current.ai_model,
-      tone_of_voice: body.tone_of_voice ?? current.tone_of_voice,
-      custom_tone_instructions: body.custom_tone_instructions ?? current.custom_tone_instructions,
-      max_reply_length: parseInt(body.max_reply_length ?? current.max_reply_length, 10),
-      forbidden_words: body.forbidden_words ?? current.forbidden_words,
-      business_knowledge: body.business_knowledge ?? current.business_knowledge,
-      auto_pilot_enabled: body.auto_pilot_enabled ? 1 : 0,
-      auto_pilot_min_confidence: parseFloat(body.auto_pilot_min_confidence ?? current.auto_pilot_min_confidence),
-      telegram_admin_chat_id: body.telegram_admin_chat_id ?? current.telegram_admin_chat_id,
+      default_ai_provider: body.default_ai_provider ?? current.default_ai_provider,
     };
 
     if (body.api_key_openai && !body.api_key_openai.includes('...')) {
@@ -61,17 +49,13 @@ router.post('/', (req: Request, res: Response) => {
     if (body.api_key_anthropic && !body.api_key_anthropic.includes('...')) {
       updates.api_key_anthropic = body.api_key_anthropic;
     }
-    if (body.api_key_groq && !body.api_key_groq.includes('...')) {
-      updates.api_key_groq = body.api_key_groq;
-    }
-    if (body.telegram_bot_token && !body.telegram_bot_token.includes('...')) {
-      updates.telegram_bot_token = body.telegram_bot_token;
+    if (body.global_telegram_bot_token && !body.global_telegram_bot_token.includes('...')) {
+      updates.global_telegram_bot_token = body.global_telegram_bot_token;
     }
 
-    const updated = dbRepository.updateSettings(updates);
+    const updated = dbRepository.updateGlobalSettings(updates);
 
-    // If telegram token updated, trigger polling if active
-    if (updates.telegram_bot_token) {
+    if (updates.global_telegram_bot_token) {
       TelegramBotService.stopPolling();
       TelegramBotService.startPolling();
     }
@@ -85,9 +69,9 @@ router.post('/', (req: Request, res: Response) => {
 // POST test Telegram connection
 router.post('/test-telegram', async (req: Request, res: Response) => {
   try {
-    const settings = dbRepository.getSettings();
-    const token = req.body.token || settings.telegram_bot_token;
-    const chatId = req.body.chatId || settings.telegram_admin_chat_id;
+    const globalSettings = dbRepository.getGlobalSettings();
+    const token = req.body.token || globalSettings.global_telegram_bot_token || process.env.TELEGRAM_BOT_TOKEN;
+    const chatId = req.body.chatId || process.env.TELEGRAM_ADMIN_CHAT_ID;
 
     if (!token || !chatId) {
       return res.status(400).json({ success: false, error: 'Token o Chat ID mancanti' });
@@ -99,7 +83,7 @@ router.post('/test-telegram', async (req: Request, res: Response) => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         chat_id: chatId,
-        text: '🎉 <b>Test Connessione DNAReplya Riuscito!</b>\nIl tuo bot Telegram è collegato e pronto a ricevere le notifiche di approvazione.',
+        text: '🎉 <b>Test Connessione DNAReplya Riuscito!</b>\nIl bot Telegram è pronto per le notifiche e l\'approvazione commenti.',
         parse_mode: 'HTML',
       }),
     });
