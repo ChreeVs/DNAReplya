@@ -105,7 +105,7 @@ router.post('/:id/approve', async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, error: 'Commento non trovato' });
     }
 
-    const finalReply = req.body.final_reply || comment.proposed_reply;
+    const finalReply = req.body?.final_reply || comment.proposed_reply || '';
 
     // 1. Publish directly to Facebook or Instagram via Graph API
     const publishRes = await MetaPublisherService.publishReply(comment.id, finalReply);

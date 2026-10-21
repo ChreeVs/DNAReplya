@@ -1300,7 +1300,11 @@ document.addEventListener('DOMContentLoaded', () => {
     showToast('⏳ Approvazione e invio in corso...', 'info');
 
     try {
-      const res = await apiFetch(`/api/comments/${id}/approve`, { method: 'POST' });
+      const res = await apiFetch(`/api/comments/${id}/approve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ final_reply: replyText }),
+      });
       const data = await res.json();
       if (data.success) {
         if (data.publishedToSocial) {
