@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { dbRepository } from '../../db/index.js';
 import { MetaSyncService } from '../../services/social/metaSync.js';
 import { MetaPublisherService } from '../../services/social/metaPublisher.js';
+import { AIOrchestrator } from '../../services/ai/orchestrator.js';
 
 const router = Router();
 
@@ -135,6 +136,38 @@ router.post('/:id/reject', async (req: Request, res: Response) => {
 
     await dbRepository.updateComment(comment.id, { status: 'rejected' });
     res.json({ success: true, message: 'Commento scartato' });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST regenerate AI reply for a comment
+router.post('/:id/regenerate', async (req: Request, res: Response) => {
+  try {
+    const commentId = String(req.params.id);
+    const comment = await dbRepository.getCommentById(commentId);
+    if (!comment) {
+      return res.status(404).json({ success: false, error: 'Commento non trovato' });
+    }
+
+    const aiResult = await AIOrchestrator.generateReply({
+      profileId: comment.profile_id,
+      platform: comment.platform,
+      authorUsername: comment.author_username,
+      commentText: comment.comment_text,
+      postSnippet: comment.post_snippet,
+    });
+
+    await dbRepository.updateComment(comment.id, {
+      proposed_reply: aiResult.proposedReply,
+    });
+
+    res.json({
+      success: true,
+      proposedReply: aiResult.proposedReply,
+      modelUsed: aiResult.modelUsed,
+      providerUsed: aiResult.providerUsed,
+    });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }

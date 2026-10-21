@@ -1093,6 +1093,7 @@ document.addEventListener('DOMContentLoaded', () => {
           ${c.status === 'pending' ? `
             <div class="feed-card-actions">
               <button class="btn-card-action approve" onclick="window.approveComment('${c.id}')">🟢 Approva e Invia</button>
+              <button class="btn-card-action regen" onclick="window.regenerateComment('${c.id}')">🔄 Rigenera</button>
               <button class="btn-card-action edit" onclick="window.openEditModal('${c.id}')">✏️ Modifica</button>
               <button class="btn-card-action reject" onclick="window.rejectComment('${c.id}')">❌ Scarta</button>
             </div>
@@ -1204,6 +1205,22 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Action Window Bindings
+  window.regenerateComment = async (id) => {
+    try {
+      showToast('🔄 Generazione nuova risposta AI in corso...', 'info');
+      const res = await apiFetch(`/api/comments/${id}/regenerate`, { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        showToast('✨ Risposta AI rigenerata con successo!', 'success');
+        loadActiveProfileComments();
+      } else {
+        showToast(`❌ Errore: ${data.error}`, 'error');
+      }
+    } catch (err) {
+      showToast('❌ Errore durante la rigenerazione', 'error');
+    }
+  };
+
   window.approveComment = async (id) => {
     try {
       const res = await apiFetch(`/api/comments/${id}/approve`, { method: 'POST' });

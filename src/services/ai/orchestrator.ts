@@ -9,20 +9,48 @@ export class AIOrchestrator {
     const profile = await dbRepository.getProfileById(req.profileId);
     const globalSettings = await dbRepository.getGlobalSettings();
 
-    const provider = (profile?.ai_provider || globalSettings.default_ai_provider || 'openai') as AIProvider;
-    const model = profile?.ai_model || this.getDefaultModel(provider);
+    // Clean username to avoid double @@
+    const cleanUsername = (req.authorUsername || '').replace(/^@+/, '');
 
-    // 1. Retrieve dynamic few-shot examples strictly isolated for this client/profile
+    // 1. Resolve provider and API key with smart auto-fallback
+    let provider = (profile?.ai_provider || globalSettings.default_ai_provider || 'openai') as AIProvider;
+    let apiKey = this.getApiKey(globalSettings, provider);
+
+    // If the selected provider has no API key, automatically fallback to whichever provider has a key
+    if (!apiKey) {
+      if (this.getApiKey(globalSettings, 'gemini')) {
+        provider = 'gemini';
+        apiKey = this.getApiKey(globalSettings, 'gemini');
+      } else if (this.getApiKey(globalSettings, 'openai')) {
+        provider = 'openai';
+        apiKey = this.getApiKey(globalSettings, 'openai');
+      } else if (this.getApiKey(globalSettings, 'anthropic')) {
+        provider = 'anthropic';
+        apiKey = this.getApiKey(globalSettings, 'anthropic');
+      }
+    }
+
+    // Ensure model matches provider
+    let model = profile?.ai_model || '';
+    if (provider === 'gemini') {
+      if (!model || !model.toLowerCase().includes('gemini')) model = 'gemini-1.5-flash';
+    } else if (provider === 'openai') {
+      if (!model || !model.toLowerCase().includes('gpt')) model = 'gpt-4o-mini';
+    } else if (provider === 'anthropic') {
+      if (!model || !model.toLowerCase().includes('claude')) model = 'claude-3-5-sonnet-20241022';
+    }
+
+    // 2. Retrieve dynamic few-shot examples strictly isolated for this client/profile
     const pastReplies = await dbRepository.getApprovedRepliesByProfile(req.profileId, 5);
 
-    // 2. Build system prompt tailored to this profile's brand persona and boundaries
+    // 3. Build system prompt tailored to this profile's brand persona and boundaries
     const systemPrompt = this.buildSystemPrompt(profile, req.platform, pastReplies);
 
-    // 3. Build user prompt
+    // 4. Build user prompt
     const userPrompt = `
 CLIENTE / BRAND: ${profile ? profile.name : 'Brand'}
 PIATTAFORMA: ${req.platform.toUpperCase()}
-AUTORE DEL COMMENTO: @${req.authorUsername}
+AUTORE DEL COMMENTO: @${cleanUsername}
 ${req.postSnippet ? `POST DI RIFERIMENTO: "${req.postSnippet}"` : ''}
 TESTO DEL COMMENTO RICEVUTO:
 "${req.commentText}"
@@ -30,12 +58,9 @@ TESTO DEL COMMENTO RICEVUTO:
 Elabora ora la migliore risposta rispettando rigorosamente le linee guida del brand, il tono e i limiti imposti. Rispondi SOLO con il testo del messaggio finale senza virgolette né spiegazioni.
 `.trim();
 
-    // 4. Resolve API Key from global settings or environment
-    const apiKey = this.getApiKey(globalSettings, provider);
-
     if (!apiKey) {
       return {
-        proposedReply: `[Bozza]: Ciao @${req.authorUsername}, grazie per il tuo commento! (Configura la chiave API ${provider.toUpperCase()} nella Dashboard per attivare l'AI).`,
+        proposedReply: `[Bozza]: Ciao @${cleanUsername}, grazie per il tuo commento! (Configura la chiave API ${provider.toUpperCase()} nella Dashboard per attivare l'AI).`,
         modelUsed: 'mock-no-key',
         providerUsed: provider,
         fewShotExamplesCount: pastReplies.length,
