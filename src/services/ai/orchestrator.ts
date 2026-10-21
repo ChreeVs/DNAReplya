@@ -33,7 +33,9 @@ export class AIOrchestrator {
     // Ensure model matches provider
     let model = profile?.ai_model || '';
     if (provider === 'gemini') {
-      if (!model || !model.toLowerCase().includes('gemini')) model = 'gemini-1.5-flash';
+      if (!model || !model.toLowerCase().includes('gemini') || model === 'gemini-1.5-flash') {
+        model = 'gemini-2.0-flash';
+      }
     } else if (provider === 'openai') {
       if (!model || !model.toLowerCase().includes('gpt')) model = 'gpt-4o-mini';
     } else if (provider === 'anthropic') {
@@ -153,7 +155,7 @@ ${profile?.forbidden_words ? `TERMINI O ARGOMENTI VIETATI (NON USARLI MAI):\n${p
   private static getDefaultModel(provider: AIProvider): string {
     switch (provider) {
       case 'openai': return 'gpt-4o-mini';
-      case 'gemini': return 'gemini-1.5-flash';
+      case 'gemini': return 'gemini-2.0-flash';
       case 'anthropic': return 'claude-3-5-sonnet-20241022';
       default: return 'gpt-4o-mini';
     }
@@ -196,24 +198,111 @@ ${profile?.forbidden_words ? `TERMINI O ARGOMENTI VIETATI (NON USARLI MAI):\n${p
     systemPrompt: string,
     userPrompt: string
   ): Promise<string> {
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-    const res = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: systemPrompt }] },
-        contents: [{ parts: [{ text: userPrompt }] }],
-        generationConfig: { temperature: 0.7 },
-      }),
-    });
+    // 1. Sanitize model name
+    const requestedModel = (model || 'gemini-2.0-flash').replace(/^models\//, '').trim();
+    const primary = (requestedModel === 'gemini-1.5-flash' || !requestedModel)
+      ? 'gemini-2.0-flash'
+      : requestedModel;
 
-    if (!res.ok) {
-      const err = await res.text();
-      throw new Error(`Gemini error (${res.status}): ${err}`);
+    // High-priority candidate list to try sequentially
+    const candidateModels = Array.from(new Set([
+      primary,
+      'gemini-2.0-flash',
+      'gemini-1.5-flash-latest',
+      'gemini-2.5-flash',
+      'gemini-2.0-flash-lite',
+      'gemini-1.5-flash-002',
+      'gemini-1.5-pro-latest',
+      'gemini-pro',
+    ].filter(Boolean)));
+
+    // Helper to attempt generation on a specific model
+    const tryModel = async (targetModel: string, useSystemInstruction = true): Promise<string | null> => {
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${apiKey}`;
+      const body: any = {
+        contents: [{
+          parts: [{
+            text: useSystemInstruction
+              ? userPrompt
+              : (systemPrompt ? `${systemPrompt}\n\n---\n\n${userPrompt}` : userPrompt)
+          }]
+        }],
+        generationConfig: { temperature: 0.7 },
+      };
+
+      if (useSystemInstruction && systemPrompt) {
+        body.systemInstruction = { parts: [{ text: systemPrompt }] };
+      }
+
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+
+      if (res.ok) {
+        const data = await res.json() as any;
+        return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      }
+
+      const errText = await res.text();
+
+      // If 400 error mentions unsupported systemInstruction, retry without it
+      if (res.status === 400 && useSystemInstruction && (errText.includes('systemInstruction') || errText.includes('system_instruction'))) {
+        return tryModel(targetModel, false);
+      }
+
+      // If 404 Not Found, return null so loop can try the next candidate
+      if (res.status === 404 || errText.includes('not found')) {
+        console.warn(`[AIOrchestrator] Gemini model "${targetModel}" returned 404 Not Found. Trying next candidate...`);
+        return null;
+      }
+
+      // Any other error (400 invalid key, 429 quota, etc.) should fail immediately
+      throw new Error(`Gemini error (${res.status}): ${errText}`);
+    };
+
+    // Step 1: Try static candidate models
+    for (const cand of candidateModels) {
+      try {
+        const result = await tryModel(cand);
+        if (result !== null) {
+          return result;
+        }
+      } catch (err: any) {
+        // Only bubble up if it's not a 404 candidate miss
+        throw err;
+      }
     }
 
-    const data = await res.json() as any;
-    return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    // Step 2: If all static names return 404, query ListModels dynamically
+    try {
+      console.log('[AIOrchestrator] Interrogazione ModelService.ListModels per trovare modelli supportati dalla chiave API...');
+      const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+      if (listRes.ok) {
+        const listData = await listRes.json() as any;
+        const availableModels: any[] = listData.models || [];
+        const supported = availableModels
+          .filter(m => Array.isArray(m.supportedGenerationMethods) && m.supportedGenerationMethods.includes('generateContent'))
+          .map(m => String(m.name).replace(/^models\//, ''));
+
+        // Pick best available model (prefer flash > gemini > first available)
+        const best = supported.find(m => m.includes('2.0') && m.includes('flash'))
+          || supported.find(m => m.includes('flash'))
+          || supported.find(m => m.includes('gemini'))
+          || supported[0];
+
+        if (best) {
+          console.log(`[AIOrchestrator] Trovato modello attivo compatibile: ${best}`);
+          const resText = await tryModel(best, true);
+          if (resText !== null) return resText;
+        }
+      }
+    } catch (listErr: any) {
+      console.warn('[AIOrchestrator] ListModels fallback non riuscito:', listErr.message);
+    }
+
+    throw new Error('Nessun modello Gemini abilitato trovato per questa API key. Crea una chiave gratuita su https://aistudio.google.com/ e incollala in Configurazione.');
   }
 
   private static async callAnthropic(

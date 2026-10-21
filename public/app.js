@@ -137,9 +137,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Toast utility
   function showToast(message, type = 'info') {
-    const container = document.getElementById('toastContainer');
+    let container = document.getElementById('toastContainer');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'toastContainer';
+      container.className = 'toast-container';
+      document.body.appendChild(container);
+    }
     const toast = document.createElement('div');
-    toast.className = `toast ${type}`;
+    toast.className = `toast toast-${type}`;
     toast.textContent = message;
     container.appendChild(toast);
     setTimeout(() => {
@@ -1064,7 +1070,10 @@ document.addEventListener('DOMContentLoaded', () => {
       const initial = (authorDisplayName.charAt(0) || '👤').toUpperCase();
       const postSnippetText = c.post_snippet ? `su "${escapeHtml(c.post_snippet)}"` : '';
 
-      return `
+            const isErrorReply = Boolean(displayReply && displayReply.startsWith('[Errore AI'));
+            const isDraftReply = Boolean(displayReply && displayReply.startsWith('[Bozza]'));
+
+            return `
         <div class="feed-card" id="card-${c.id}">
           <div>
             <div class="feed-card-header">
@@ -1084,9 +1093,14 @@ document.addEventListener('DOMContentLoaded', () => {
               "${escapeHtml(c.comment_text)}"
             </div>
 
-            <div class="feed-proposed-box">
-              <span class="proposed-label">${c.status === 'pending' ? '🤖 Proposta Risposta AI:' : '📤 Risposta Finale Pubblicata:'}</span>
-              <p class="proposed-text">${escapeHtml(displayReply || 'Nessuna risposta disponibile')}</p>
+            <div class="feed-proposed-box ${isErrorReply ? 'error-box' : ''}">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.35rem;">
+                <span class="proposed-label" style="${isErrorReply ? 'color:var(--accent-rose);font-weight:700;' : ''}">
+                  ${isErrorReply ? '⚠️ Avviso AI Gemini:' : (c.status === 'pending' ? '🤖 Proposta Risposta AI:' : '📤 Risposta Finale Pubblicata:')}
+                </span>
+                ${isErrorReply ? `<button class="btn btn-ghost btn-sm" style="font-size:0.75rem;padding:0.2rem 0.55rem;color:var(--lime);border-color:var(--border-active);" onclick="window.regenerateComment('${c.id}')">🔄 Risolvi con Gemini 2.0</button>` : ''}
+              </div>
+              <p class="proposed-text" style="${isErrorReply ? 'color:#fca5a5;font-size:0.82rem;' : ''}">${escapeHtml(displayReply || 'Nessuna risposta disponibile')}</p>
             </div>
           </div>
 
@@ -1224,6 +1238,17 @@ document.addEventListener('DOMContentLoaded', () => {
   window.approveComment = async (id) => {
     const card = document.getElementById(`card-${id}`);
     const btn = card?.querySelector('.btn-card-action.approve');
+
+    const comment = (activeProfileComments || []).find(c => c.id === id);
+    const replyText = comment ? (comment.final_reply || comment.proposed_reply || '') : '';
+    if (replyText.startsWith('[Errore AI') || replyText.startsWith('[Bozza]')) {
+      const wantRegen = confirm('Attenzione: La risposta attuale contiene un messaggio di errore o bozza temporanea.\n\nVuoi rigenerare la risposta con l\'AI prima di inviarla?');
+      if (wantRegen) {
+        window.regenerateComment(id);
+        return;
+      }
+    }
+
     if (btn) {
       btn.disabled = true;
       btn.textContent = '⏳ Invio in corso...';
