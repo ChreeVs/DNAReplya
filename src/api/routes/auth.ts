@@ -28,7 +28,7 @@ router.post('/register', async (req: Request, res: Response) => {
       } else {
         return res.status(403).json({
           success: false,
-          error: `Account già registrato, in attesa di approvazione da parte di Christian Valese (${AuthService.getSuperAdminEmail()}).`,
+          error: 'Account già registrato. La richiesta è in attesa di approvazione.',
         });
       }
     }
@@ -76,7 +76,7 @@ router.post('/register', async (req: Request, res: Response) => {
     return res.json({
       success: true,
       pendingApproval: true,
-      message: `Registrazione completata! La tua richiesta di accesso è stata inviata per approvazione a Christian Valese (${AuthService.getSuperAdminEmail()}).`,
+      message: 'Registrazione completata! La richiesta è stata inviata: attendi l\'approvazione per poter accedere.',
     });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
@@ -107,7 +107,7 @@ router.post('/login', async (req: Request, res: Response) => {
       return res.status(403).json({
         success: false,
         pendingApproval: true,
-        error: `Il tuo account è in attesa di approvazione da parte di Christian Valese (${AuthService.getSuperAdminEmail()}). Potrai accedere non appena confermato.`,
+        error: 'Il tuo account è in attesa di approvazione. Potrai effettuare l\'accesso non appena la richiesta sarà approvata.',
       });
     }
 

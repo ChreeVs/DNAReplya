@@ -533,7 +533,11 @@ body {
 .flex-1 { flex: 1; }
 
 input[type="text"],
+input[type="email"],
 input[type="password"],
+input[type="url"],
+input[type="number"],
+input[type="search"],
 textarea,
 select {
   width: 100%;
@@ -546,6 +550,17 @@ select {
   font-size: 0.88rem;
   outline: none;
   transition: var(--transition);
+}
+
+/* Maintain Carbon dark theme on browser autofill */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus, 
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 40px var(--bg-input) inset !important;
+  -webkit-text-fill-color: var(--text-main) !important;
+  caret-color: var(--text-main) !important;
+  transition: background-color 5000s ease-in-out 0s;
 }
 
 input:focus,
