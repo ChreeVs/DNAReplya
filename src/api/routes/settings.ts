@@ -40,17 +40,19 @@ router.post('/', async (req: Request, res: Response) => {
       default_ai_provider: body.default_ai_provider ?? current.default_ai_provider,
     };
 
+    const clean = (val?: string) => (val || '').trim().replace(/^["']|["']$/g, '');
+
     if (body.api_key_openai && !body.api_key_openai.includes('...')) {
-      updates.api_key_openai = body.api_key_openai;
+      updates.api_key_openai = clean(body.api_key_openai);
     }
     if (body.api_key_gemini && !body.api_key_gemini.includes('...')) {
-      updates.api_key_gemini = body.api_key_gemini;
+      updates.api_key_gemini = clean(body.api_key_gemini);
     }
     if (body.api_key_anthropic && !body.api_key_anthropic.includes('...')) {
-      updates.api_key_anthropic = body.api_key_anthropic;
+      updates.api_key_anthropic = clean(body.api_key_anthropic);
     }
     if (body.global_telegram_bot_token && !body.global_telegram_bot_token.includes('...')) {
-      updates.global_telegram_bot_token = body.global_telegram_bot_token;
+      updates.global_telegram_bot_token = clean(body.global_telegram_bot_token);
     }
 
     const updated = await dbRepository.updateGlobalSettings(updates);

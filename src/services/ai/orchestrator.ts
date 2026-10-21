@@ -198,41 +198,59 @@ ${profile?.forbidden_words ? `TERMINI O ARGOMENTI VIETATI (NON USARLI MAI):\n${p
     systemPrompt: string,
     userPrompt: string
   ): Promise<string> {
-    // 1. Sanitize model name
-    const requestedModel = (model || 'gemini-2.0-flash').replace(/^models\//, '').trim();
-    const primary = (requestedModel === 'gemini-1.5-flash' || !requestedModel)
-      ? 'gemini-2.0-flash'
-      : requestedModel;
+    const cleanKey = (apiKey || '').trim().replace(/^["']|["']$/g, '');
+    const cleanRequested = (model || '').replace(/^models\//, '').trim();
 
-    // High-priority candidate list to try sequentially
-    const candidateModels = Array.from(new Set([
-      primary,
-      'gemini-2.0-flash',
-      'gemini-1.5-flash-latest',
-      'gemini-2.5-flash',
-      'gemini-2.0-flash-lite',
-      'gemini-1.5-flash-002',
-      'gemini-1.5-pro-latest',
-      'gemini-pro',
-    ].filter(Boolean)));
+    // High-priority candidate list across both v1 and v1beta
+    // Note: 'gemini-1.5-flash' is GA on v1, while 'gemini-2.0-flash' is on v1beta/v1
+    const candidatePairs: Array<{ ver: 'v1' | 'v1beta'; name: string }> = [
+      ...(cleanRequested ? [
+        { ver: 'v1' as const, name: cleanRequested },
+        { ver: 'v1beta' as const, name: cleanRequested },
+      ] : []),
+      // Primary GA models
+      { ver: 'v1', name: 'gemini-1.5-flash' },
+      { ver: 'v1beta', name: 'gemini-2.0-flash' },
+      { ver: 'v1', name: 'gemini-2.0-flash' },
+      { ver: 'v1', name: 'gemini-1.5-pro' },
+      { ver: 'v1beta', name: 'gemini-1.5-flash-latest' },
+      { ver: 'v1beta', name: 'gemini-1.5-flash' },
+      { ver: 'v1beta', name: 'gemini-2.0-flash-lite' },
+      { ver: 'v1beta', name: 'gemini-pro' },
+    ];
 
-    // Helper to attempt generation on a specific model
-    const tryModel = async (targetModel: string, useSystemInstruction = true): Promise<string | null> => {
-      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${apiKey}`;
-      const body: any = {
+    // Deduplicate candidate pairs
+    const seen = new Set<string>();
+    const uniquePairs = candidatePairs.filter(p => {
+      const key = `${p.ver}:${p.name}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+    let lastErrorMsg = '';
+
+    // Helper to attempt generation on a specific (version, model) pair
+    const tryModel = async (
+      ver: 'v1' | 'v1beta',
+      targetModel: string
+    ): Promise<string | null> => {
+      const endpoint = `https://generativelanguage.googleapis.com/${ver}/models/${targetModel}:generateContent?key=${cleanKey}`;
+
+      // Combine system prompt and user input so it works seamlessly on both v1 and v1beta
+      const combinedText = systemPrompt
+        ? `${systemPrompt}\n\n### RICHIESTA COMMENTO:\n${userPrompt}`
+        : userPrompt;
+
+      const body = {
         contents: [{
-          parts: [{
-            text: useSystemInstruction
-              ? userPrompt
-              : (systemPrompt ? `${systemPrompt}\n\n---\n\n${userPrompt}` : userPrompt)
-          }]
+          role: 'user',
+          parts: [{ text: combinedText }],
         }],
-        generationConfig: { temperature: 0.7 },
+        generationConfig: {
+          temperature: 0.7,
+        },
       };
-
-      if (useSystemInstruction && systemPrompt) {
-        body.systemInstruction = { parts: [{ text: systemPrompt }] };
-      }
 
       const res = await fetch(endpoint, {
         method: 'POST',
@@ -246,63 +264,66 @@ ${profile?.forbidden_words ? `TERMINI O ARGOMENTI VIETATI (NON USARLI MAI):\n${p
       }
 
       const errText = await res.text();
+      let parsedErr: any = null;
+      try { parsedErr = JSON.parse(errText); } catch (_) {}
+      const errMsg = parsedErr?.error?.message || errText;
 
-      // If 400 error mentions unsupported systemInstruction, retry without it
-      if (res.status === 400 && useSystemInstruction && (errText.includes('systemInstruction') || errText.includes('system_instruction'))) {
-        return tryModel(targetModel, false);
-      }
-
-      // If 404 Not Found, return null so loop can try the next candidate
-      if (res.status === 404 || errText.includes('not found')) {
-        console.warn(`[AIOrchestrator] Gemini model "${targetModel}" returned 404 Not Found. Trying next candidate...`);
+      // If status 404 (endpoint or model name not found in this version), allow trying next candidate
+      if (res.status === 404 || parsedErr?.error?.status === 'NOT_FOUND') {
+        console.warn(`[AIOrchestrator] Gemini (${ver}/${targetModel}) 404: ${errMsg}`);
+        lastErrorMsg = errMsg;
         return null;
       }
 
-      // Any other error (400 invalid key, 429 quota, etc.) should fail immediately
-      throw new Error(`Gemini error (${res.status}): ${errText}`);
+      // If status is 400 (invalid API key) or 403 (unregistered / permissions), fail immediately!
+      throw new Error(`Google API (${res.status}): ${errMsg}`);
     };
 
     // Step 1: Try static candidate models
-    for (const cand of candidateModels) {
+    for (const cand of uniquePairs) {
       try {
-        const result = await tryModel(cand);
+        const result = await tryModel(cand.ver, cand.name);
         if (result !== null) {
           return result;
         }
       } catch (err: any) {
-        // Only bubble up if it's not a 404 candidate miss
+        // Real API errors (invalid key, project not found, billing) should bubble up immediately
         throw err;
       }
     }
 
-    // Step 2: If all static names return 404, query ListModels dynamically
+    // Step 2: Fallback - query ModelService.ListModels on v1 and v1beta
     try {
-      console.log('[AIOrchestrator] Interrogazione ModelService.ListModels per trovare modelli supportati dalla chiave API...');
-      const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
-      if (listRes.ok) {
+      console.log('[AIOrchestrator] Interrogazione ModelService.ListModels...');
+      for (const ver of ['v1', 'v1beta'] as const) {
+        const listRes = await fetch(`https://generativelanguage.googleapis.com/${ver}/models?key=${cleanKey}`);
+        if (!listRes.ok) {
+          const listErr = await listRes.text();
+          console.warn(`[AIOrchestrator] ListModels (${ver}) non riuscito:`, listRes.status, listErr);
+          continue;
+        }
+
         const listData = await listRes.json() as any;
         const availableModels: any[] = listData.models || [];
         const supported = availableModels
-          .filter(m => Array.isArray(m.supportedGenerationMethods) && m.supportedGenerationMethods.includes('generateContent'))
+          .filter(m => !m.supportedGenerationMethods || m.supportedGenerationMethods.includes('generateContent'))
           .map(m => String(m.name).replace(/^models\//, ''));
 
-        // Pick best available model (prefer flash > gemini > first available)
-        const best = supported.find(m => m.includes('2.0') && m.includes('flash'))
-          || supported.find(m => m.includes('flash'))
+        const best = supported.find(m => m.includes('flash'))
           || supported.find(m => m.includes('gemini'))
           || supported[0];
 
         if (best) {
-          console.log(`[AIOrchestrator] Trovato modello attivo compatibile: ${best}`);
-          const resText = await tryModel(best, true);
+          console.log(`[AIOrchestrator] Trovato modello attivo compatibile da ListModels (${ver}): ${best}`);
+          const resText = await tryModel(ver, best);
           if (resText !== null) return resText;
         }
       }
     } catch (listErr: any) {
-      console.warn('[AIOrchestrator] ListModels fallback non riuscito:', listErr.message);
+      console.warn('[AIOrchestrator] ListModels fallback fallito:', listErr.message);
     }
 
-    throw new Error('Nessun modello Gemini abilitato trovato per questa API key. Crea una chiave gratuita su https://aistudio.google.com/ e incollala in Configurazione.');
+    throw new Error(`Google Gemini: Impossibile generare la risposta (${lastErrorMsg || 'Modello non raggiungibile'}). Verifica la chiave API creata su https://aistudio.google.com/`);
   }
 
   private static async callAnthropic(
