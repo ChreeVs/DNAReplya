@@ -1,0 +1,27 @@
+# Render.com Blueprint Specification for DNAReplya
+services:
+  - type: web
+    name: dnareplya
+    runtime: node
+    plan: free
+    region: frankfurt
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_PATH
+        value: ./data/dnareplya.db
+      - key: META_VERIFY_TOKEN
+        value: dnareplya_meta_verify_token_secure
+      # Optional: you can set your API keys directly here or configure them later in the Web Dashboard
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_ADMIN_CHAT_ID
+        sync: false

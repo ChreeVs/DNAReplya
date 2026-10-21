@@ -93,19 +93,11 @@ export interface ApprovedReplyRecord {
   created_at: string;
 }
 
+import { schemaSql } from './schemaSql.js';
+
 // Initialize database schema and default profile
 export function initDatabase() {
-  const schemaPath = path.resolve(__dirname, 'schema.sql');
-  if (fs.existsSync(schemaPath)) {
-    const schemaSql = fs.readFileSync(schemaPath, 'utf-8');
-    db.exec(schemaSql);
-  } else {
-    const fallbackPath = path.resolve(process.cwd(), 'src', 'db', 'schema.sql');
-    if (fs.existsSync(fallbackPath)) {
-      const schemaSql = fs.readFileSync(fallbackPath, 'utf-8');
-      db.exec(schemaSql);
-    }
-  }
+  db.exec(schemaSql);
 
   // Ensure default profile "Scarabocchi Saggi" exists
   const existing = db.prepare('SELECT COUNT(*) as count FROM profiles').get() as { count: number };
