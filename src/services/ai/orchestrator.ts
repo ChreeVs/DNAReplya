@@ -49,7 +49,9 @@ export class AIOrchestrator {
     } else if (provider === 'openai') {
       if (!model || !model.toLowerCase().includes('gpt')) model = 'gpt-4o-mini';
     } else if (provider === 'anthropic') {
-      if (!model || !model.toLowerCase().includes('claude')) model = 'claude-3-opus-20240229';
+      if (!model || (!model.toLowerCase().includes('claude') && !model.toLowerCase().includes('opus'))) {
+        model = 'claude-opus-5-5';
+      }
     }
 
     // 2. Retrieve dynamic few-shot examples strictly isolated for this client/profile
@@ -166,7 +168,7 @@ ${profile?.forbidden_words ? `TERMINI O ARGOMENTI VIETATI (NON USARLI MAI):\n${p
     switch (provider) {
       case 'openai': return 'gpt-4o-mini';
       case 'gemini': return 'gemini-2.0-flash';
-      case 'anthropic': return 'claude-3-opus-20240229';
+      case 'anthropic': return 'claude-opus-5-5';
       default: return 'gpt-4o-mini';
     }
   }
@@ -345,8 +347,45 @@ ${profile?.forbidden_words ? `TERMINI O ARGOMENTI VIETATI (NON USARLI MAI):\n${p
     const cleanKey = (apiKey || '').trim().replace(/^["']|["']$/g, '');
     const requestedModel = (model || '').trim();
 
+    // 1. If key is from OpenRouter (sk-or-...)
+    if (cleanKey.startsWith('sk-or')) {
+      const orCandidates = [
+        requestedModel || 'anthropic/claude-opus-5.5',
+        'anthropic/claude-opus-5.5',
+        'anthropic/claude-3-opus',
+        'anthropic/claude-3.5-sonnet',
+      ];
+      for (const orModel of orCandidates) {
+        const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${cleanKey}`,
+            'HTTP-Referer': 'https://dnareplya.onrender.com',
+            'X-Title': 'DNAReplya',
+          },
+          body: JSON.stringify({
+            model: orModel,
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userPrompt },
+            ],
+            temperature: 0.7,
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json() as any;
+          return data.choices?.[0]?.message?.content || '';
+        }
+      }
+    }
+
+    // 2. Native Anthropic Messages API
+    // Candidate models prioritized for Opus 5.5 and Claude 3 Opus
     const candidateModels = Array.from(new Set([
-      requestedModel.includes('opus') ? requestedModel : null,
+      'claude-opus-5-5',
+      'claude-5-5-opus',
+      'claude-opus-5.5',
       'claude-3-opus-20240229',
       'claude-3-opus-latest',
       requestedModel,
