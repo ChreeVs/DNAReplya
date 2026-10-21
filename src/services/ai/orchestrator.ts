@@ -49,7 +49,7 @@ export class AIOrchestrator {
     } else if (provider === 'openai') {
       if (!model || !model.toLowerCase().includes('gpt')) model = 'gpt-4o-mini';
     } else if (provider === 'anthropic') {
-      if (!model || !model.toLowerCase().includes('claude')) model = 'claude-3-5-sonnet-20241022';
+      if (!model || !model.toLowerCase().includes('claude')) model = 'claude-3-opus-20240229';
     }
 
     // 2. Retrieve dynamic few-shot examples strictly isolated for this client/profile
@@ -166,7 +166,7 @@ ${profile?.forbidden_words ? `TERMINI O ARGOMENTI VIETATI (NON USARLI MAI):\n${p
     switch (provider) {
       case 'openai': return 'gpt-4o-mini';
       case 'gemini': return 'gemini-2.0-flash';
-      case 'anthropic': return 'claude-3-5-sonnet-20241022';
+      case 'anthropic': return 'claude-3-opus-20240229';
       default: return 'gpt-4o-mini';
     }
   }
@@ -343,15 +343,21 @@ ${profile?.forbidden_words ? `TERMINI O ARGOMENTI VIETATI (NON USARLI MAI):\n${p
     userPrompt: string
   ): Promise<string> {
     const cleanKey = (apiKey || '').trim().replace(/^["']|["']$/g, '');
-    const requestedModel = (model || 'claude-3-5-sonnet-20241022').trim();
+    const requestedModel = (model || '').trim();
 
     const candidateModels = Array.from(new Set([
+      requestedModel.includes('opus') ? requestedModel : null,
+      'claude-3-opus-20240229',
+      'claude-3-opus-latest',
       requestedModel,
       'claude-3-5-sonnet-20241022',
+      'claude-3-5-sonnet-latest',
+      'claude-3-5-sonnet-20240620',
+      'claude-3-7-sonnet-20250219',
       'claude-3-5-haiku-20241022',
       'claude-3-haiku-20240307',
       'claude-3-sonnet-20240229',
-    ]));
+    ].filter(Boolean) as string[]));
 
     let lastError = '';
 
