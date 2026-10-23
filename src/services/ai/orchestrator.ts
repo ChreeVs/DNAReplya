@@ -49,7 +49,12 @@ export class AIOrchestrator {
     } else if (provider === 'openai') {
       if (!model || !model.toLowerCase().includes('gpt')) model = 'gpt-4o-mini';
     } else if (provider === 'anthropic') {
-      if (!model || (!model.toLowerCase().includes('claude') && !model.toLowerCase().includes('opus'))) {
+      if (
+        !model ||
+        (!model.toLowerCase().includes('claude') && !model.toLowerCase().includes('opus')) ||
+        model.toLowerCase().includes('claude-3-opus') ||
+        model.toLowerCase().includes('claude-3-sonnet')
+      ) {
         model = 'claude-opus-5-5';
       }
     }
@@ -350,9 +355,9 @@ ${profile?.forbidden_words ? `TERMINI O ARGOMENTI VIETATI (NON USARLI MAI):\n${p
     // 1. If key is from OpenRouter (sk-or-...)
     if (cleanKey.startsWith('sk-or')) {
       const orCandidates = [
-        requestedModel || 'anthropic/claude-opus-5.5',
+        requestedModel && !requestedModel.includes('claude-3-opus') ? requestedModel : 'anthropic/claude-opus-5.5',
         'anthropic/claude-opus-5.5',
-        'anthropic/claude-3-opus',
+        'anthropic/claude-3.7-sonnet',
         'anthropic/claude-3.5-sonnet',
       ];
       for (const orModel of orCandidates) {
@@ -380,22 +385,20 @@ ${profile?.forbidden_words ? `TERMINI O ARGOMENTI VIETATI (NON USARLI MAI):\n${p
     }
 
     // 2. Native Anthropic Messages API
-    // Candidate models prioritized for Opus 5.5 and Claude 3 Opus
+    // Strictly active models in 2026: Claude Opus 5.5, Claude 3.7 Sonnet, Claude 3.5 Sonnet, Claude 3.5 Haiku
+    // (Retired models claude-3-opus-20240229, claude-3-opus-latest, claude-3-sonnet-20240229 are completely removed)
     const candidateModels = Array.from(new Set([
       'claude-opus-5-5',
       'claude-5-5-opus',
       'claude-opus-5.5',
-      'claude-3-opus-20240229',
-      'claude-3-opus-latest',
-      requestedModel,
+      'claude-3-7-sonnet-20250219',
+      'claude-3-7-sonnet-latest',
       'claude-3-5-sonnet-20241022',
       'claude-3-5-sonnet-latest',
-      'claude-3-5-sonnet-20240620',
-      'claude-3-7-sonnet-20250219',
       'claude-3-5-haiku-20241022',
-      'claude-3-haiku-20240307',
-      'claude-3-sonnet-20240229',
-    ].filter(Boolean) as string[]));
+      'claude-3-5-haiku-latest',
+      requestedModel,
+    ].filter(m => m && !m.includes('claude-3-opus') && !m.includes('claude-3-sonnet') && !m.includes('claude-3-haiku-20240307')) as string[]));
 
     let lastError = '';
 
