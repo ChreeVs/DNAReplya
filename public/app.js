@@ -66,7 +66,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const filterChips = document.querySelectorAll('.filter-chip');
   const chanFilterChips = document.querySelectorAll('.chan-filter-chip');
   const btnSyncLiveComments = document.getElementById('btnSyncLiveComments');
-  const btnOpenIngestModal = document.getElementById('btnOpenIngestModal');
+  const btnSyncCustomRange = document.getElementById('btnSyncCustomRange');
   const inboxDateFilter = document.getElementById('inboxDateFilter');
   const customDateRangeBox = document.getElementById('customDateRangeBox');
   const inboxDateFrom = document.getElementById('inboxDateFrom');
@@ -184,11 +184,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const thAccountHandle = document.getElementById('thAccountHandle');
   const thAccessToken = document.getElementById('thAccessToken');
   const thUserId = document.getElementById('thUserId');
-
-  const ingestModal = document.getElementById('ingestModal');
-  const ingestCommentForm = document.getElementById('ingestCommentForm');
-  const btnCloseIngestModal = document.getElementById('btnCloseIngestModal');
-  const btnCancelIngestModal = document.getElementById('btnCancelIngestModal');
 
   const replyModal = document.getElementById('replyModal');
   const modalAuthor = document.getElementById('modalAuthor');
@@ -1265,7 +1260,7 @@ document.addEventListener('DOMContentLoaded', () => {
   async function loadActiveProfileComments() {
     if (!activeProfile) return;
     try {
-      const res = await apiFetch(`/api/comments?profileId=${activeProfile.id}`);
+      const res = await apiFetch(`/api/comments?profileId=${activeProfile.id}&limit=500`);
       const data = await res.json();
       if (!data.success) return;
 
@@ -1912,84 +1907,70 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
       btnSyncLiveComments.disabled = true;
-      btnSyncLiveComments.textContent = '⏳ Sincronizzazione...';
+      btnSyncLiveComments.textContent = 'Sincronizzazione...';
       try {
-        const res = await apiFetch(`/api/comments/sync?profileId=${activeProfile.id}`, { method: 'POST' });
+        let syncUrl = `/api/comments/sync?profileId=${activeProfile.id}`;
+        if (activeDateFilter === 'custom' && (customDateFrom || customDateTo)) {
+          if (customDateFrom) syncUrl += `&since=${encodeURIComponent(customDateFrom)}`;
+          if (customDateTo) syncUrl += `&until=${encodeURIComponent(customDateTo)}`;
+        } else if (activeDateFilter === '30days') {
+          const past30 = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
+          syncUrl += `&since=${past30}`;
+        }
+        const res = await apiFetch(syncUrl, { method: 'POST' });
         const data = await res.json();
         if (data.success) {
-          showToast(`✅ ${data.message}`, 'success');
+          showToast(data.message, 'success');
           syncSecondsRemaining = 900;
           updateSyncTimerDisplay();
           await fetchSyncStatus();
           await loadActiveProfileComments();
         } else {
-          showToast(`❌ Errore: ${data.error}`, 'error');
+          showToast(`Errore: ${data.error}`, 'error');
         }
       } catch (err) {
-        showToast('❌ Errore durante la sincronizzazione live', 'error');
+        showToast('Errore durante la sincronizzazione live', 'error');
       } finally {
         btnSyncLiveComments.disabled = false;
-        btnSyncLiveComments.textContent = '⚡ Sincronizza Live';
+        btnSyncLiveComments.textContent = 'Sincronizza Live';
+      }
+    });
+  }
+
+  if (btnSyncCustomRange) {
+    btnSyncCustomRange.addEventListener('click', async () => {
+      if (!activeProfile) {
+        showToast('Seleziona prima un profilo cliente', 'error');
+        return;
+      }
+      if (!customDateFrom && !customDateTo) {
+        showToast('Specifica almeno una data (Da / A) per scaricare i commenti del periodo', 'info');
+        return;
+      }
+      btnSyncCustomRange.disabled = true;
+      btnSyncCustomRange.textContent = 'Scaricamento...';
+      try {
+        let syncUrl = `/api/comments/sync?profileId=${activeProfile.id}`;
+        if (customDateFrom) syncUrl += `&since=${encodeURIComponent(customDateFrom)}`;
+        if (customDateTo) syncUrl += `&until=${encodeURIComponent(customDateTo)}`;
+        const res = await apiFetch(syncUrl, { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+          showToast(data.message, 'success');
+          await loadActiveProfileComments();
+        } else {
+          showToast(`Errore: ${data.error}`, 'error');
+        }
+      } catch (err) {
+        showToast('Errore durante lo scaricamento dei commenti storici', 'error');
+      } finally {
+        btnSyncCustomRange.disabled = false;
+        btnSyncCustomRange.textContent = 'Scarica da Social';
       }
     });
   }
 
   btnRefreshFeed.addEventListener('click', loadActiveProfileComments);
-
-  // Ingest Real Comment Modal
-  btnOpenIngestModal.addEventListener('click', () => ingestModal.classList.remove('hidden'));
-  btnCloseIngestModal.addEventListener('click', () => ingestModal.classList.add('hidden'));
-  btnCancelIngestModal.addEventListener('click', () => ingestModal.classList.add('hidden'));
-
-  ingestCommentForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    if (!activeProfile) return;
-
-    const payload = {
-      profileId: activeProfile.id,
-      platform: document.getElementById('ingestPlatform').value,
-      authorUsername: document.getElementById('ingestAuthor').value.trim(),
-      postSnippet: document.getElementById('ingestPostSnippet').value.trim(),
-      commentText: document.getElementById('ingestText').value.trim(),
-    };
-
-    const submitBtn = ingestCommentForm.querySelector('button[type="submit"]');
-    submitBtn.disabled = true;
-    submitBtn.textContent = 'Generazione AI in corso...';
-
-    try {
-      await fetch('/api/webhooks/meta', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          object: payload.platform === 'facebook' ? 'page' : 'instagram',
-          entry: [{
-            id: activeProfile.id,
-            changes: [{
-              field: 'comments',
-              value: {
-                item: 'comment',
-                verb: 'add',
-                message: payload.commentText,
-                from: { name: payload.authorUsername },
-                media: { id: payload.postSnippet || 'post_123' },
-              }
-            }]
-          }]
-        }),
-      });
-
-      showToast('⚡ Commento registrato e processato con AI!', 'success');
-      ingestModal.classList.add('hidden');
-      ingestCommentForm.reset();
-      setTimeout(loadActiveProfileComments, 1200);
-    } catch (err) {
-      showToast('❌ Errore durante la registrazione', 'error');
-    } finally {
-      submitBtn.disabled = false;
-      submitBtn.textContent = 'Processa con AI & Notifica Telegram';
-    }
-  });
 
   // Action Window Bindings
   window.regenerateComment = async (id) => {

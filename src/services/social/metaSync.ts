@@ -7,7 +7,10 @@ export class MetaSyncService {
   /**
    * Syncs comments for a specific profile from all its connected Facebook and Instagram accounts
    */
-  static async syncCommentsForProfile(profileId: string): Promise<{
+  static async syncCommentsForProfile(
+    profileId: string,
+    options?: { since?: string; until?: string; limit?: number }
+  ): Promise<{
     checkedAccounts: number;
     newCommentsFound: number;
     errors: string[];
@@ -30,10 +33,10 @@ export class MetaSyncService {
       try {
         checkedAccounts++;
         if (acc.platform === 'facebook') {
-          const count = await this.syncFacebookPageComments(profile, acc);
+          const count = await this.syncFacebookPageComments(profile, acc, options);
           newCommentsFound += count;
         } else if (acc.platform === 'instagram') {
-          const count = await this.syncInstagramComments(profile, acc);
+          const count = await this.syncInstagramComments(profile, acc, options);
           newCommentsFound += count;
         }
       } catch (err: any) {
@@ -74,20 +77,36 @@ export class MetaSyncService {
   /**
    * Syncs Facebook Page feed and comments (skipping page's own replies)
    */
-  private static async syncFacebookPageComments(profile: any, acc: any): Promise<number> {
+  private static async syncFacebookPageComments(
+    profile: any,
+    acc: any,
+    options?: { since?: string; until?: string; limit?: number }
+  ): Promise<number> {
     const pageId = String(acc.external_account_id);
     const token = acc.access_token;
     const pageName = (acc.account_name || '').trim().toLowerCase();
     let newCount = 0;
 
-    // Fetch up to 10 latest posts with up to 50 latest comments each (trying published_posts first, fallback to feed)
-    let url = `https://graph.facebook.com/v20.0/${pageId}/published_posts?fields=id,message,permalink_url,created_time,comments.limit(50){id,message,from{id,name},created_time,permalink_url}&limit=10&access_token=${token}`;
+    let dateParams = '';
+    if (options?.since) {
+      const s = Math.floor(new Date(options.since).getTime() / 1000);
+      if (!isNaN(s) && s > 0) dateParams += `&since=${s}`;
+    }
+    if (options?.until) {
+      const u = Math.floor(new Date(options.until).getTime() / 1000);
+      if (!isNaN(u) && u > 0) dateParams += `&until=${u}`;
+    }
+
+    const postsLimit = options?.limit || (options?.since ? 50 : 15);
+
+    // Fetch posts with comments (trying published_posts first, fallback to feed)
+    let url = `https://graph.facebook.com/v20.0/${pageId}/published_posts?fields=id,message,permalink_url,created_time,comments.limit(100){id,message,from{id,name},created_time,permalink_url}&limit=${postsLimit}&access_token=${token}${dateParams}`;
     let res = await fetch(url);
     let data = await res.json() as any;
 
     if (!data.data || !Array.isArray(data.data) || data.data.length === 0) {
       // Fallback to /feed if published_posts is empty
-      url = `https://graph.facebook.com/v20.0/${pageId}/feed?fields=id,message,permalink_url,created_time,comments.limit(50){id,message,from{id,name},created_time,permalink_url}&limit=10&access_token=${token}`;
+      url = `https://graph.facebook.com/v20.0/${pageId}/feed?fields=id,message,permalink_url,created_time,comments.limit(100){id,message,from{id,name},created_time,permalink_url}&limit=${postsLimit}&access_token=${token}${dateParams}`;
       res = await fetch(url);
       data = await res.json() as any;
     }
@@ -121,8 +140,16 @@ export class MetaSyncService {
         const isDeleted = await dbRepository.isPlatformCommentDeleted(commentId) || await dbRepository.isPlatformCommentDeleted(`fb_${commentId}`);
         if (isDeleted) continue;
 
+        const commentCreatedAt = c.created_time ? new Date(c.created_time).toISOString() : new Date().toISOString();
+
         const existing = await dbRepository.findCommentByPlatformCommentId(commentId);
-        if (existing) continue;
+        if (existing) {
+          // If existing comment's received_at needs fixing with true platform created_time
+          if (c.created_time && (!existing.received_at || existing.received_at > commentCreatedAt)) {
+            await dbRepository.updateComment(existing.id, { received_at: commentCreatedAt });
+          }
+          continue;
+        }
 
         // If authorName is missing, attempt direct query on comment node or user node with Page Access Token
         if (!authorName && commentId) {
@@ -180,7 +207,7 @@ export class MetaSyncService {
         const isAutoPilot = Boolean(profile.auto_pilot_enabled);
         const initialStatus = isAutoPilot ? 'auto_replied' : 'pending';
 
-        // 4. Insert into DB
+        // 4. Insert into DB with real platform publication time
         const record = await dbRepository.insertComment({
           id: `fb_${commentId}`,
           profile_id: profile.id,
@@ -193,6 +220,7 @@ export class MetaSyncService {
           comment_text: commentText,
           post_snippet: postSnippet,
           post_url: commentUrl,
+          received_at: commentCreatedAt,
           proposed_reply: aiResult.proposedReply,
           final_reply: isAutoPilot ? aiResult.proposedReply : '',
           status: initialStatus,
@@ -222,14 +250,30 @@ export class MetaSyncService {
   /**
    * Syncs Instagram Business media and comments (skipping profile's own replies)
    */
-  private static async syncInstagramComments(profile: any, acc: any): Promise<number> {
+  private static async syncInstagramComments(
+    profile: any,
+    acc: any,
+    options?: { since?: string; until?: string; limit?: number }
+  ): Promise<number> {
     const igUserId = String(acc.external_account_id);
     const token = acc.access_token;
     const ownHandle = (acc.account_handle || acc.account_name || '').replace(/^@/, '').toLowerCase().trim();
     let newCount = 0;
 
-    // Fetch up to 10 latest media posts with permalink and up to 25 latest comments each
-    const url = `https://graph.facebook.com/v20.0/${igUserId}/media?fields=id,caption,permalink,timestamp,comments.limit(25){id,text,from{id,username},timestamp}&limit=10&access_token=${token}`;
+    let dateParams = '';
+    if (options?.since) {
+      const s = Math.floor(new Date(options.since).getTime() / 1000);
+      if (!isNaN(s) && s > 0) dateParams += `&since=${s}`;
+    }
+    if (options?.until) {
+      const u = Math.floor(new Date(options.until).getTime() / 1000);
+      if (!isNaN(u) && u > 0) dateParams += `&until=${u}`;
+    }
+
+    const mediaLimit = options?.limit || (options?.since ? 50 : 15);
+
+    // Fetch media posts with permalink and comments
+    const url = `https://graph.facebook.com/v20.0/${igUserId}/media?fields=id,caption,permalink,timestamp,comments.limit(50){id,text,from{id,username},timestamp}&limit=${mediaLimit}&access_token=${token}${dateParams}`;
     const res = await fetch(url);
     const data = await res.json() as any;
 
@@ -262,8 +306,16 @@ export class MetaSyncService {
         const isDeleted = await dbRepository.isPlatformCommentDeleted(commentId) || await dbRepository.isPlatformCommentDeleted(`ig_${commentId}`);
         if (isDeleted) continue;
 
+        const commentCreatedAt = c.timestamp ? new Date(c.timestamp).toISOString() : new Date().toISOString();
+
         const existing = await dbRepository.findCommentByPlatformCommentId(commentId);
-        if (existing) continue;
+        if (existing) {
+          // If existing comment's received_at needs fixing with true platform timestamp
+          if (c.timestamp && (!existing.received_at || existing.received_at > commentCreatedAt)) {
+            await dbRepository.updateComment(existing.id, { received_at: commentCreatedAt });
+          }
+          continue;
+        }
 
         const authorUsername = authorUsernameRaw ? `@${authorUsernameRaw}` : '@utente_instagram';
         const authorName = authorUsernameRaw || 'Utente Instagram';
@@ -279,7 +331,7 @@ export class MetaSyncService {
         const isAutoPilot = Boolean(profile.auto_pilot_enabled);
         const initialStatus = isAutoPilot ? 'auto_replied' : 'pending';
 
-        // 4. Insert into DB
+        // 4. Insert into DB with real platform timestamp
         const record = await dbRepository.insertComment({
           id: `ig_${commentId}`,
           profile_id: profile.id,
@@ -292,6 +344,7 @@ export class MetaSyncService {
           comment_text: commentText,
           post_snippet: postSnippet,
           post_url: postUrl,
+          received_at: commentCreatedAt,
           proposed_reply: aiResult.proposedReply,
           final_reply: isAutoPilot ? aiResult.proposedReply : '',
           status: initialStatus,

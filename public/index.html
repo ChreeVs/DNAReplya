@@ -11,97 +11,149 @@
   <link rel="stylesheet" href="/style.css?v=2.6">
 </head>
 <body>
-  <!-- Header Bar -->
-  <header class="app-header">
-    <!-- Left: Brand Logo & Profile Switcher -->
-    <div class="header-left">
-      <div class="brand-logo">
-        <span class="logo-icon">🧬</span>
-        <div class="logo-text">
-          <h1>DNAReplya</h1>
-          <span class="logo-sub">Multi-Profile AI Hub</span>
-        </div>
-      </div>
-
-      <div class="header-divider"></div>
-
-      <!-- Profile Switcher Dropdown (Workspace Switcher like Manychat) -->
-      <div class="profile-switcher-wrapper">
-        <button class="profile-switcher-btn" id="btnProfileDropdown" title="Seleziona Profilo Cliente">
-          <span class="profile-badge-dot" id="headerProfileDot"></span>
-          <span class="profile-active-name" id="headerProfileName">Caricamento...</span>
-          <svg class="dropdown-chevron-svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="6 9 12 15 18 9"></polyline>
+  <div class="app-layout">
+    <!-- Left: Sidebar Navigation Menu -->
+    <aside class="app-sidebar" id="appSidebar">
+      <div class="sidebar-brand">
+        <div class="brand-logo">
+          <svg class="brand-dna-svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--lime)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m8 8 8 8"></path>
+            <path d="m9 16 7-7"></path>
+            <path d="m14 7 3-3"></path>
+            <path d="m10 17-3 3"></path>
+            <circle cx="6.5" cy="6.5" r="2.2"></circle>
+            <circle cx="17.5" cy="17.5" r="2.2"></circle>
+            <circle cx="6.5" cy="17.5" r="2.2"></circle>
+            <circle cx="17.5" cy="6.5" r="2.2"></circle>
           </svg>
-        </button>
-        <div class="profile-dropdown-menu hidden" id="profileDropdownMenu">
-          <div class="dropdown-header">
-            <span>Profili Clienti</span>
-            <button class="btn-create-profile-trigger" id="btnOpenCreateProfileModal">+ Nuovo Profilo</button>
-          </div>
-          <div class="profile-dropdown-list" id="profileDropdownList">
-            <!-- Dynamic profile items -->
+          <div class="logo-text">
+            <h1>DNAReplya</h1>
+            <span class="logo-sub">Multi-Profile AI Hub</span>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- Center: Navigation Tabs (Modern Segmented Control) -->
-    <nav class="header-nav">
-      <button class="nav-tab active" data-tab="tab-inbox" id="tabBtnInbox">
-        <span class="tab-icon">📬</span>
-        <span class="tab-label">Inbox</span>
-        <span class="nav-counter" id="inboxCountBadge">0</span>
-      </button>
-      <button class="nav-tab" data-tab="tab-channels" id="tabBtnChannels">
-        <span class="tab-icon">🌐</span>
-        <span class="tab-label">Canali</span>
-        <span class="nav-counter" id="channelsCountBadge">0</span>
-      </button>
-      <button class="nav-tab" data-tab="tab-guardrails" id="tabBtnGuardrails">
-        <span class="tab-icon">🛡️</span>
-        <span class="tab-label">Regole</span>
-      </button>
-      <button class="nav-tab" data-tab="tab-memory" id="tabBtnMemory">
-        <span class="tab-icon">🧠</span>
-        <span class="tab-label">Memoria AI</span>
-        <span class="nav-counter" id="memoryCountBadge">0</span>
-      </button>
-      <button class="nav-tab" data-tab="tab-byok" id="tabBtnBYOK">
-        <span class="tab-icon">🔑</span>
-        <span class="tab-label">Chiavi LLM</span>
-      </button>
-      <button class="nav-tab" data-tab="tab-docs" id="tabBtnDocs">
-        <span class="tab-icon">📖</span>
-        <span class="tab-label">Documentazione</span>
-      </button>
-    </nav>
-
-    <!-- Right: User Session Area -->
-    <div class="header-right">
-      <div class="user-session-wrapper" id="userSessionWrapper">
-        <button class="btn-team-admin hidden" id="btnOpenTeamModal" title="Richieste Approvazione Collaboratori">
-          <span class="team-icon">👥</span>
-          <span>Team</span>
-          <span class="badge-pending" id="badgePendingUsers">0</span>
-        </button>
-        <div class="user-profile-badge" title="Account Attivo">
-          <span class="user-avatar-dot"></span>
-          <span class="user-name" id="navUserName">Utente</span>
-        </div>
-        <button class="btn-logout" id="btnLogout" title="Disconnetti dalla sessione">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-            <polyline points="16 17 21 12 16 7"></polyline>
-            <line x1="21" y1="12" x2="9" y2="12"></line>
+      <!-- Navigation Tabs (Sidebar Menu a sinistra) -->
+      <nav class="sidebar-nav">
+        <button class="nav-tab active" data-tab="tab-inbox" id="tabBtnInbox">
+          <svg class="tab-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline>
+            <path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path>
           </svg>
+          <span class="tab-label">Inbox</span>
+          <span class="nav-counter" id="inboxCountBadge">0</span>
         </button>
-      </div>
-    </div>
-  </header>
+        <button class="nav-tab" data-tab="tab-channels" id="tabBtnChannels">
+          <svg class="tab-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="2" y1="12" x2="22" y2="12"></line>
+            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+          </svg>
+          <span class="tab-label">Canali</span>
+          <span class="nav-counter" id="channelsCountBadge">0</span>
+        </button>
+        <button class="nav-tab" data-tab="tab-guardrails" id="tabBtnGuardrails">
+          <svg class="tab-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+          </svg>
+          <span class="tab-label">Regole AI</span>
+        </button>
+        <button class="nav-tab" data-tab="tab-memory" id="tabBtnMemory">
+          <svg class="tab-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="4" y="4" width="16" height="16" rx="2"></rect>
+            <rect x="9" y="9" width="6" height="6"></rect>
+            <line x1="9" y1="1" x2="9" y2="4"></line>
+            <line x1="15" y1="1" x2="15" y2="4"></line>
+            <line x1="9" y1="20" x2="9" y2="23"></line>
+            <line x1="15" y1="20" x2="15" y2="23"></line>
+            <line x1="20" y1="9" x2="23" y2="9"></line>
+            <line x1="20" y1="14" x2="23" y2="14"></line>
+            <line x1="1" y1="9" x2="4" y2="9"></line>
+            <line x1="1" y1="14" x2="4" y2="14"></line>
+          </svg>
+          <span class="tab-label">Memoria AI</span>
+          <span class="nav-counter" id="memoryCountBadge">0</span>
+        </button>
+        <button class="nav-tab" data-tab="tab-byok" id="tabBtnBYOK">
+          <svg class="tab-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m21 2-2 2m-6 6 4 4 3-3-4-4"></path>
+            <circle cx="7.5" cy="15.5" r="5.5"></circle>
+            <path d="m11.5 11.5 8.5-8.5"></path>
+          </svg>
+          <span class="tab-label">Chiavi LLM</span>
+        </button>
+        <button class="nav-tab" data-tab="tab-docs" id="tabBtnDocs">
+          <svg class="tab-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+          </svg>
+          <span class="tab-label">Documentazione</span>
+        </button>
+      </nav>
 
-  <!-- Main Container -->
-  <main class="main-content">
+      <div class="sidebar-footer">
+        <span class="sidebar-status-dot"></span>
+        <span class="sidebar-status-text">DNAReplya Hub</span>
+      </div>
+    </aside>
+
+    <!-- Right Side: Header + Main Content -->
+    <div class="app-body">
+      <!-- Header Bar -->
+      <header class="app-header">
+        <!-- In alto a sinistra: Selettore del profilo -->
+        <div class="header-left">
+          <div class="profile-switcher-wrapper">
+            <span class="profile-switcher-label">Profilo:</span>
+            <button class="profile-switcher-btn" id="btnProfileDropdown" title="Seleziona Profilo Cliente">
+              <span class="profile-badge-dot" id="headerProfileDot"></span>
+              <span class="profile-active-name" id="headerProfileName">Caricamento...</span>
+              <svg class="dropdown-chevron-svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </button>
+            <div class="profile-dropdown-menu hidden" id="profileDropdownMenu">
+              <div class="dropdown-header">
+                <span>Profili Clienti</span>
+                <button class="btn-create-profile-trigger" id="btnOpenCreateProfileModal">+ Nuovo Profilo</button>
+              </div>
+              <div class="profile-dropdown-list" id="profileDropdownList">
+                <!-- Dynamic profile items -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- In alto a destra: Utente loggato -->
+        <div class="header-right">
+          <div class="user-session-wrapper" id="userSessionWrapper">
+            <button class="btn-team-admin hidden" id="btnOpenTeamModal" title="Richieste Approvazione Collaboratori">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+              </svg>
+              <span>Team</span>
+              <span class="badge-pending" id="badgePendingUsers">0</span>
+            </button>
+            <div class="user-profile-badge" title="Account Attivo">
+              <span class="user-avatar-dot"></span>
+              <span class="user-name" id="navUserName">Utente</span>
+            </div>
+            <button class="btn-logout" id="btnLogout" title="Disconnetti dalla sessione">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                <polyline points="16 17 21 12 16 7"></polyline>
+                <line x1="21" y1="12" x2="9" y2="12"></line>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <!-- Main Container -->
+      <main class="main-content">
     <!-- Active Profile Context Banner -->
     <div class="profile-banner">
       <div class="profile-banner-left">
@@ -140,7 +192,7 @@
       <div class="panel">
         <div class="panel-header">
           <div>
-            <h3>📬 Inbox Commenti Multi-Canale</h3>
+            <h3>Inbox Commenti Multi-Canale</h3>
             <p class="panel-desc">Elenco compatto ad alte prestazioni con filtri data, azioni bulk multiple e link diretto ai post social.</p>
           </div>
           <div class="header-actions">
@@ -150,8 +202,7 @@
               <button class="filter-chip" data-filter="approved">Approvati & Inviati</button>
               <button class="filter-chip" data-filter="rejected">Scartati</button>
             </div>
-            <button class="btn btn-secondary btn-sm" id="btnOpenIngestModal">📥 Simula Commento</button>
-            <button class="btn btn-ghost btn-sm" id="btnRefreshFeed">🔄 Aggiorna</button>
+            <button class="btn btn-ghost btn-sm" id="btnRefreshFeed">Aggiorna</button>
           </div>
         </div>
 
@@ -160,7 +211,7 @@
           <div class="inbox-toolbar-row">
             <!-- Channel Filter Chips -->
             <div class="channel-filter-group" id="channelFilterGroup">
-              <button class="chan-filter-chip active" data-chan="all">🌐 Tutti i Canali</button>
+              <button class="chan-filter-chip active" data-chan="all">Tutti i Canali</button>
             </div>
 
             <div class="inbox-subbar-actions">
@@ -169,7 +220,7 @@
                 <span class="sync-timer-text">Prossimo sync: <strong id="syncTimerCountdown">15:00</strong></span>
               </div>
               <button class="btn btn-secondary btn-sm" id="btnSyncLiveComments" title="Controlla subito Facebook, Instagram e TikTok per nuovi commenti">
-                ⚡ Sincronizza Live
+                Sincronizza Live
               </button>
             </div>
           </div>
@@ -180,12 +231,12 @@
               <div class="control-field">
                 <span class="control-label">Filtra per data:</span>
                 <select id="inboxDateFilter" class="select-styled select-compact">
-                  <option value="all">📅 Tutte le date</option>
-                  <option value="today">📅 Oggi</option>
-                  <option value="yesterday">📅 Ieri</option>
-                  <option value="7days">📅 Ultimi 7 giorni</option>
-                  <option value="30days">📅 Ultimi 30 giorni</option>
-                  <option value="custom">📆 Periodo personalizzato...</option>
+                  <option value="all">Tutte le date</option>
+                  <option value="today">Oggi</option>
+                  <option value="yesterday">Ieri</option>
+                  <option value="7days">Ultimi 7 giorni</option>
+                  <option value="30days">Ultimi 30 giorni</option>
+                  <option value="custom">Periodo personalizzato...</option>
                 </select>
               </div>
 
@@ -195,6 +246,7 @@
                 <input type="date" id="inboxDateFrom" class="inbox-date-input" title="Data di inizio periodo">
                 <span class="range-sep">A:</span>
                 <input type="date" id="inboxDateTo" class="inbox-date-input" title="Data di fine periodo">
+                <button type="button" class="btn btn-secondary btn-xs" id="btnSyncCustomRange" title="Scarica commenti storici da Facebook / Instagram per questo intervallo">Scarica da Social</button>
                 <button type="button" class="btn-clear-date" id="btnClearCustomDates" title="Resetta date">✕</button>
               </div>
 
@@ -202,14 +254,14 @@
               <div class="control-field">
                 <span class="control-label">Ordina:</span>
                 <select id="inboxDateSort" class="select-styled select-compact">
-                  <option value="desc">⬇️ Più recenti prima</option>
-                  <option value="asc">⬆️ Meno recenti prima</option>
+                  <option value="desc">Più recenti prima</option>
+                  <option value="asc">Meno recenti prima</option>
                 </select>
               </div>
 
               <!-- Keyword / Author Search Input -->
               <div class="inbox-search-wrapper">
-                <input type="text" id="inboxSearchInput" class="inbox-search-input" placeholder="🔍 Cerca autore o testo commento...">
+                <input type="text" id="inboxSearchInput" class="inbox-search-input" placeholder="Cerca autore o testo commento...">
               </div>
             </div>
 
@@ -229,16 +281,16 @@
           </div>
           <div class="bulk-bar-actions">
             <button type="button" class="btn btn-primary btn-sm btn-bulk-action" id="btnBulkApprove">
-              🟢 Approva & Invia Selezionati
+              Approva & Invia Selezionati
             </button>
             <button type="button" class="btn btn-ghost btn-sm btn-bulk-action" id="btnBulkReject">
-              ❌ Scarta
+              Scarta
             </button>
             <button type="button" class="btn btn-ghost btn-sm btn-bulk-action" id="btnBulkDelete" style="color:var(--accent-rose);border-color:rgba(244,63,94,0.35);">
-              🗑️ Elimina
+              Elimina
             </button>
             <button type="button" class="btn btn-ghost btn-sm" id="btnBulkDeselect">
-              ✕ Deseleziona
+              Deseleziona
             </button>
           </div>
         </div>
@@ -270,12 +322,12 @@
       <div class="panel">
         <div class="panel-header">
           <div>
-            <h3>🌐 Account Social del Cliente</h3>
+            <h3>Account Social del Cliente</h3>
             <p class="panel-desc">Gestisci gli account collegati a questo profilo (Instagram, Facebook, TikTok, LinkedIn, Threads).</p>
           </div>
           <div class="header-actions">
             <button class="btn btn-primary" id="btnOpenConnectHubModal" style="display: inline-flex; align-items: center; gap: 0.55rem; font-weight: 700; padding: 0.75rem 1.4rem;">
-              <span style="font-size: 1.1rem; line-height: 1;">➕</span> Connetti Canale...
+              <span>+</span> Connetti Canale...
             </button>
           </div>
         </div>
@@ -314,7 +366,7 @@
       <div class="panel max-w-4xl">
         <div class="panel-header">
           <div>
-            <h3>🛡️ Parametri & Base di Conoscenza del Cliente</h3>
+            <h3>Parametri & Base di Conoscenza del Cliente</h3>
             <p class="panel-desc">Queste regole definiscono con precisione lo stile e i limiti entro cui l'AI risponde per <b>questo specifico brand</b>.</p>
           </div>
         </div>
@@ -322,7 +374,7 @@
         <form id="profileGuardrailsForm" class="panel-body">
           <!-- Brand Identity: Logo & Accent Color -->
           <div class="brand-identity-box mb-6">
-            <h4>🎨 Identità Visiva del Brand & Colore Accent</h4>
+            <h4>Identità Visiva del Brand & Colore Accent</h4>
             <p class="field-hint">Imposta il logo e il colore primario del cliente: cambierà l'intero tema dello strumento quando questo profilo è attivo.</p>
             
             <div class="form-row mt-3">
@@ -433,7 +485,7 @@
 
           <div class="panel-footer">
             <button type="submit" class="btn btn-primary" id="btnSaveProfileGuardrails">
-              💾 Salva Regole del Cliente
+              Salva Regole del Cliente
             </button>
           </div>
         </form>
@@ -445,16 +497,18 @@
       <div class="panel max-w-5xl">
         <div class="panel-header">
           <div>
-            <h3>🧠 Memoria di Apprendimento del Cliente (Few-Shot Store)</h3>
+            <h3>Memoria di Apprendimento del Cliente (Few-Shot Store)</h3>
             <p class="panel-desc">Risposte approvate e corrette manualmente dall'operatore. L'LLM consulta questi esempi in tempo reale per imitare fedelmente il tono di questo brand.</p>
           </div>
-          <button class="btn btn-ghost" id="btnRefreshMemory">🔄 Aggiorna Esempi</button>
+          <button class="btn btn-ghost" id="btnRefreshMemory">Aggiorna Esempi</button>
         </div>
 
         <div class="panel-body">
           <div id="memoryList" class="memory-grid">
             <div class="empty-state">
-              <span class="empty-icon">🌱</span>
+              <span class="empty-icon">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"></rect><rect x="9" y="9" width="6" height="6"></rect><line x1="9" y1="1" x2="9" y2="4"></line><line x1="15" y1="1" x2="15" y2="4"></line><line x1="9" y1="20" x2="9" y2="23"></line><line x1="15" y1="20" x2="15" y2="23"></line></svg>
+              </span>
               <p>Nessun esempio memorizzato per questo profilo.<br>Approva la prima risposta nell'inbox per far iniziare ad apprendere l'AI!</p>
             </div>
           </div>
@@ -469,7 +523,7 @@
         <div class="panel">
           <div class="panel-header">
             <div>
-              <h3>🤖 BYOK - Chiavi API LLM</h3>
+              <h3>BYOK - Chiavi API LLM</h3>
               <p class="panel-desc">Inserisci le chiavi per i 3 provider supportati: <b>Claude (Anthropic), Google Gemini, OpenAI</b>.</p>
             </div>
           </div>
@@ -568,13 +622,15 @@
           </form>
         </div>
       </div>
+    </section>
+
     <!-- TAB 6: DOCUMENTAZIONE & GUIDA OPERATIVA -->
     <section id="tab-docs" class="tab-pane">
       <div class="docs-wrapper max-w-5xl">
         <!-- Docs Header Hero -->
         <div class="docs-hero-panel">
           <div class="docs-hero-content">
-            <div class="docs-hero-badge">📖 Guida Ufficiale & Knowledge Base</div>
+            <div class="docs-hero-badge">Guida Ufficiale & Knowledge Base</div>
             <h2>Documentazione Operativa DNAReplya</h2>
             <p class="docs-hero-desc">
               Tutto ciò che serve per configurare il database persistente, collegare i canali social (Meta, TikTok, LinkedIn, Threads), comprendere i flussi AI e risolvere istantaneamente gli errori più comuni.
@@ -584,13 +640,13 @@
 
         <!-- Quick Jump Navigation -->
         <div class="docs-quick-nav">
-          <a href="#doc-turso" class="docs-nav-chip">💾 Database Persistente (Turso)</a>
-          <a href="#doc-tiktok" class="docs-nav-chip">🎵 Allaccio TikTok Business</a>
-          <a href="#doc-meta" class="docs-nav-chip">📘 Allaccio Meta (IG & FB)</a>
-          <a href="#doc-linkedin-threads" class="docs-nav-chip">💼 LinkedIn & Threads</a>
-          <a href="#doc-troubleshooting" class="docs-nav-chip">⚠️ Errori Comuni & Soluzioni</a>
-          <a href="#doc-telegram" class="docs-nav-chip">🤖 Bot Telegram</a>
-          <a href="#doc-memory" class="docs-nav-chip">🧠 Memoria di Apprendimento</a>
+          <a href="#doc-turso" class="docs-nav-chip">Database Persistente (Turso)</a>
+          <a href="#doc-tiktok" class="docs-nav-chip">Allaccio TikTok Business</a>
+          <a href="#doc-meta" class="docs-nav-chip">Allaccio Meta (IG & FB)</a>
+          <a href="#doc-linkedin-threads" class="docs-nav-chip">LinkedIn & Threads</a>
+          <a href="#doc-troubleshooting" class="docs-nav-chip">Errori Comuni & Soluzioni</a>
+          <a href="#doc-telegram" class="docs-nav-chip">Bot Telegram</a>
+          <a href="#doc-memory" class="docs-nav-chip">Memoria di Apprendimento</a>
         </div>
 
         <!-- 1. TURSO PERSISTENT DATABASE -->
@@ -930,6 +986,8 @@
       </div>
     </section>
   </main>
+    </div> <!-- .app-body -->
+  </div> <!-- .app-layout -->
 
   <!-- MODAL: CREA NUOVO PROFILO -->
   <div id="createProfileModal" class="modal-overlay hidden">
@@ -1308,45 +1366,6 @@
     </div>
   </div>
 
-  <!-- MODAL: INGESTIONE MANUALE COMMENTO -->
-  <div id="ingestModal" class="modal-overlay hidden">
-    <div class="modal-card">
-      <div class="modal-header">
-        <h3>📥 Registra Commento in Arrivo</h3>
-        <button class="modal-close" id="btnCloseIngestModal">&times;</button>
-      </div>
-      <form id="ingestCommentForm" class="modal-body">
-        <div class="form-row">
-          <div class="form-group flex-1">
-            <label for="ingestPlatform">Canale</label>
-            <select id="ingestPlatform" class="select-styled">
-              <option value="instagram">📸 Instagram</option>
-              <option value="facebook">📘 Facebook</option>
-              <option value="tiktok">🎵 TikTok</option>
-              <option value="linkedin">💼 LinkedIn</option>
-              <option value="threads">🧵 Threads</option>
-            </select>
-          </div>
-          <div class="form-group flex-1">
-            <label for="ingestAuthor">Autore (@username)</label>
-            <input type="text" id="ingestAuthor" placeholder="es. @nome_utente" required>
-          </div>
-        </div>
-        <div class="form-group">
-          <label for="ingestPostSnippet">Post di Riferimento</label>
-          <input type="text" id="ingestPostSnippet" placeholder="es. Titolo post o ID contenuto">
-        </div>
-        <div class="form-group">
-          <label for="ingestText">Testo del Commento Ricevuto</label>
-          <textarea id="ingestText" rows="3" placeholder="Scrivi qui il commento ricevuto dal follower..." required></textarea>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-ghost" id="btnCancelIngestModal">Annulla</button>
-          <button type="submit" class="btn btn-primary">Processa con AI & Notifica Telegram</button>
-        </div>
-      </form>
-    </div>
-  </div>
 
   <!-- MODAL: MODIFICA RISPOSTA -->
   <div id="replyModal" class="modal-overlay hidden">

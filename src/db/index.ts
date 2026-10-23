@@ -152,6 +152,13 @@ export async function initDatabase(): Promise<void> {
     // Column already exists, ignore
   }
 
+  // Ensure registered users in local development are approved
+  try {
+    await db.execute('UPDATE users SET is_approved = 1 WHERE is_approved = 0');
+  } catch (e) {
+    // Column or table ignore
+  }
+
   // Ensure default profile "Scarabocchi Saggi" exists
   const existing = await db.execute('SELECT COUNT(*) as count FROM profiles');
   const count = Number(existing.rows[0]?.count || 0);
@@ -453,10 +460,25 @@ export const dbRepository = {
   },
 
   // Comments
-  async getCommentsByProfile(profileId: string, limit = 50): Promise<CommentRecord[]> {
+  async getCommentsByProfile(profileId: string, limit = 500, since?: string, until?: string): Promise<CommentRecord[]> {
+    let sql = 'SELECT * FROM comments WHERE profile_id = ?';
+    const args: any[] = [profileId];
+
+    if (since) {
+      sql += ' AND received_at >= ?';
+      args.push(since);
+    }
+    if (until) {
+      sql += ' AND received_at <= ?';
+      args.push(until);
+    }
+
+    sql += ' ORDER BY received_at DESC LIMIT ?';
+    args.push(limit);
+
     const res = await db.execute({
-      sql: 'SELECT * FROM comments WHERE profile_id = ? ORDER BY received_at DESC LIMIT ?',
-      args: [profileId, limit],
+      sql,
+      args,
     });
     return res.rows as unknown as CommentRecord[];
   },
@@ -500,6 +522,8 @@ export const dbRepository = {
   },
 
   async insertComment(comment: Partial<CommentRecord> & { profile_id: string; comment_text: string }): Promise<CommentRecord> {
+    const receivedAt = comment.received_at || new Date().toISOString();
+
     // Safeguard: do not re-insert comments previously deleted from the inbox
     if (comment.platform_comment_id && await this.isPlatformCommentDeleted(comment.platform_comment_id)) {
       console.log(`[Database] Inserimento ignorato: il commento ${comment.platform_comment_id} è stato precedentemente eliminato dall'inbox.`);
@@ -517,7 +541,7 @@ export const dbRepository = {
         comment_text: comment.comment_text,
         post_snippet: comment.post_snippet || '',
         post_url: comment.post_url || '',
-        received_at: new Date().toISOString(),
+        received_at: receivedAt,
         proposed_reply: comment.proposed_reply || '',
         final_reply: comment.final_reply || '',
         status: 'rejected',
@@ -532,8 +556,8 @@ export const dbRepository = {
         INSERT INTO comments (
           id, profile_id, social_account_id, platform, platform_post_id, platform_comment_id,
           author_username, author_name, comment_text, post_snippet, post_url,
-          proposed_reply, final_reply, status, telegram_message_id
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          received_at, proposed_reply, final_reply, status, telegram_message_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       args: [
         id,
@@ -547,6 +571,7 @@ export const dbRepository = {
         comment.comment_text,
         comment.post_snippet || '',
         comment.post_url || '',
+        receivedAt,
         comment.proposed_reply || '',
         comment.final_reply || '',
         comment.status || 'pending',

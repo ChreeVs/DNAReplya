@@ -9,19 +9,21 @@ import { SchedulerService } from '../../services/scheduler/index.js';
 
 const router = Router();
 
-// GET comments (optionally filtered by profileId)
+// GET comments (optionally filtered by profileId, limit, since, until)
 router.get('/', async (req: Request, res: Response) => {
   try {
     const profileId = req.query.profileId as string;
-    const limit = parseInt(req.query.limit as string, 10) || 100;
+    const limit = parseInt(req.query.limit as string, 10) || 500;
+    const since = req.query.since as string || req.query.dateFrom as string;
+    const until = req.query.until as string || req.query.dateTo as string;
 
     let comments: any[] = [];
     if (profileId) {
-      comments = await dbRepository.getCommentsByProfile(profileId, limit);
+      comments = await dbRepository.getCommentsByProfile(profileId, limit, since, until);
     } else {
       const profiles = await dbRepository.getAllProfiles();
       if (profiles.length > 0) {
-        comments = await dbRepository.getCommentsByProfile(profiles[0].id, limit);
+        comments = await dbRepository.getCommentsByProfile(profiles[0].id, limit, since, until);
       }
     }
 
@@ -105,23 +107,32 @@ router.get('/cron-check', async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/comments/sync - Sincronizzazione manuale per il profilo attivo dal frontend (Meta + TikTok)
+// POST /api/comments/sync - Sincronizzazione per il profilo attivo (supporta range date storiche per Meta)
 router.post('/sync', async (req: Request, res: Response) => {
   try {
-    const profileId = req.query.profileId as string || req.body.profileId;
+    const profileId = (req.query.profileId as string) || req.body.profileId;
     if (!profileId) {
       return res.status(400).json({ success: false, error: 'profileId mancante' });
     }
 
+    const since = (req.query.since as string) || (req.body.since as string) || (req.query.dateFrom as string) || (req.body.dateFrom as string);
+    const until = (req.query.until as string) || (req.body.until as string) || (req.query.dateTo as string) || (req.body.dateTo as string);
+    const limit = parseInt((req.query.limit as string) || (req.body.limit as string), 10);
+
     SchedulerService.notifyManualSync();
-    const metaRes = await MetaSyncService.syncCommentsForProfile(profileId);
+    const metaRes = await MetaSyncService.syncCommentsForProfile(profileId, { since, until, limit });
     const tiktokRes = await TikTokSyncService.syncCommentsForProfile(profileId);
     const totalNew = metaRes.newCommentsFound + tiktokRes.newCommentsFound;
     const totalChecked = metaRes.checkedAccounts + tiktokRes.checkedAccounts;
 
+    let periodMsg = '';
+    if (since || until) {
+      periodMsg = ` (Periodo: ${since || 'inizio'} → ${until || 'oggi'})`;
+    }
+
     res.json({
       success: true,
-      message: `Sincronizzazione completata: controllati ${totalChecked} canali, trovati ${totalNew} nuovi commenti (${metaRes.newCommentsFound} Meta, ${tiktokRes.newCommentsFound} TikTok).`,
+      message: `Sincronizzazione completata${periodMsg}: controllati ${totalChecked} canali, trovati ${totalNew} nuovi commenti (${metaRes.newCommentsFound} Meta, ${tiktokRes.newCommentsFound} TikTok).`,
       meta: metaRes,
       tiktok: tiktokRes,
       newCommentsFound: totalNew,

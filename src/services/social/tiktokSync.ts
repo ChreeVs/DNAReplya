@@ -173,6 +173,8 @@ export class TikTokSyncService {
           const isAutoPilot = Boolean(profile.auto_pilot_enabled);
           const initialStatus = isAutoPilot ? 'auto_replied' : 'pending';
 
+          const commentCreatedAt = c.create_time ? new Date(Number(c.create_time) * 1000).toISOString() : new Date().toISOString();
+
           // 4. Insert into DB
           const record = await dbRepository.insertComment({
             id: `tt_${commentId}`,
@@ -185,6 +187,7 @@ export class TikTokSyncService {
             author_name: authorName,
             comment_text: commentText,
             post_snippet: vid.title,
+            received_at: commentCreatedAt,
             proposed_reply: aiResult.proposedReply,
             final_reply: isAutoPilot ? aiResult.proposedReply : '',
             status: initialStatus,
