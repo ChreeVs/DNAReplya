@@ -96,8 +96,8 @@ router.post('/remove-key', async (req: Request, res: Response) => {
 router.post('/test-telegram', async (req: Request, res: Response) => {
   try {
     const globalSettings = await dbRepository.getGlobalSettings();
-    const token = req.body.token || globalSettings.global_telegram_bot_token || process.env.TELEGRAM_BOT_TOKEN;
-    const chatId = req.body.chatId || process.env.TELEGRAM_ADMIN_CHAT_ID;
+    const token = req.body?.token || globalSettings.global_telegram_bot_token || process.env.TELEGRAM_BOT_TOKEN;
+    const chatId = req.body?.chatId || process.env.TELEGRAM_ADMIN_CHAT_ID;
 
     if (!token || !chatId) {
       return res.status(400).json({ success: false, error: 'Token o Chat ID mancanti' });

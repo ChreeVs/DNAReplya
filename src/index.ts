@@ -10,6 +10,7 @@ import { requireAuth } from './api/middleware/auth.js';
 import { SchedulerService } from './services/scheduler/index.js';
 import { MetaSyncService } from './services/social/metaSync.js';
 import { TikTokSyncService } from './services/social/tiktokSync.js';
+import { LoggerService } from './services/logger/index.js';
 
 import authRouter from './api/routes/auth.js';
 import profilesRouter from './api/routes/profiles.js';
@@ -17,6 +18,7 @@ import settingsRouter from './api/routes/settings.js';
 import commentsRouter from './api/routes/comments.js';
 import webhooksRouter from './api/routes/webhooks.js';
 import metaOAuthRouter from './api/routes/metaOAuth.js';
+import logsRouter from './api/routes/logs.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -63,6 +65,7 @@ app.get('/api/cron/check-comments', async (req, res) => {
 app.use('/api/profiles', requireAuth, profilesRouter);
 app.use('/api/settings', requireAuth, settingsRouter);
 app.use('/api/comments', requireAuth, commentsRouter);
+app.use('/api/logs', requireAuth, logsRouter);
 
 // Healthcheck endpoint (Public)
 app.get('/api/health', async (req, res) => {
@@ -81,6 +84,15 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
+// Express global error handler
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  LoggerService.error('API', `Errore non gestito su ${req.method} ${req.path}: ${err.message}`, {
+    stack: err.stack,
+    query: req.query,
+  });
+  res.status(500).json({ success: false, error: err.message || 'Errore interno del server' });
+});
+
 // SPA routing fallback
 app.use((req, res) => {
   if (req.path.startsWith('/api')) {
@@ -91,6 +103,7 @@ app.use((req, res) => {
 
 // Start Server
 async function start() {
+  LoggerService.init();
   await initDatabase();
   console.log('✅ [Database] LibSQL/SQLite inizializzato con successo.');
 

@@ -547,6 +547,12 @@ document.addEventListener('DOMContentLoaded', () => {
       if (targetId === 'tab-guardrails') populateProfileGuardrails();
       if (targetId === 'tab-memory') loadActiveProfileMemory();
       if (targetId === 'tab-byok') loadGlobalSettings();
+      if (targetId === 'tab-logs') {
+        loadSystemLogs();
+        startLogsPolling();
+      } else {
+        stopLogsPolling();
+      }
     });
   });
 
@@ -2414,6 +2420,268 @@ document.addEventListener('DOMContentLoaded', () => {
       .replace(/>/g, '&gt;');
   }
 
+  // --- System Logs Management & Viewer Logic ---
+  let allSystemLogs = [];
+  let activeLogLevel = 'all';
+  let activeLogSource = 'all';
+  let activeLogSearch = '';
+  let logsPollingInterval = null;
+
+  const logsErrorCounter = document.getElementById('logsErrorCounter');
+  const logsAutoRefreshToggle = document.getElementById('logsAutoRefreshToggle');
+  const btnRefreshLogs = document.getElementById('btnRefreshLogs');
+  const btnCopyLogs = document.getElementById('btnCopyLogs');
+  const btnClearLogs = document.getElementById('btnClearLogs');
+  const statLogsTotal = document.getElementById('statLogsTotal');
+  const statLogsErrors = document.getElementById('statLogsErrors');
+  const statLogsWarnings = document.getElementById('statLogsWarnings');
+  const statLogsLastTime = document.getElementById('statLogsLastTime');
+  const logsFilterChips = document.querySelectorAll('.log-filter-chip');
+  const chipBadgeErrors = document.getElementById('chipBadgeErrors');
+  const chipBadgeWarns = document.getElementById('chipBadgeWarns');
+  const logsSourceFilter = document.getElementById('logsSourceFilter');
+  const logsSearchInput = document.getElementById('logsSearchInput');
+  const logsTerminalList = document.getElementById('logsTerminalList');
+  const logsVisibleCount = document.getElementById('logsVisibleCount');
+
+  async function loadSystemLogs(silent = false) {
+    if (!authToken) return;
+    try {
+      const res = await apiFetch('/api/logs?limit=400');
+      const data = await res.json();
+      if (!data.success) return;
+
+      allSystemLogs = data.logs || [];
+      const stats = data.stats || { total: 0, errors: 0, warnings: 0, info: 0, success: 0 };
+
+      // Update Header & Badge Stats
+      if (statLogsTotal) statLogsTotal.textContent = stats.total;
+      if (statLogsErrors) statLogsErrors.textContent = stats.errors;
+      if (statLogsWarnings) statLogsWarnings.textContent = stats.warnings;
+      if (chipBadgeErrors) chipBadgeErrors.textContent = stats.errors;
+      if (chipBadgeWarns) chipBadgeWarns.textContent = stats.warnings;
+
+      if (statLogsLastTime) {
+        if (stats.lastLogTime) {
+          const d = new Date(stats.lastLogTime);
+          statLogsLastTime.textContent = isNaN(d.getTime()) ? stats.lastLogTime : d.toLocaleTimeString('it-IT');
+        } else {
+          statLogsLastTime.textContent = 'Nessun evento';
+        }
+      }
+
+      // Sidebar Error Indicator Badge
+      if (logsErrorCounter) {
+        if (stats.errors > 0) {
+          logsErrorCounter.textContent = stats.errors;
+          logsErrorCounter.classList.remove('hidden');
+        } else {
+          logsErrorCounter.classList.add('hidden');
+        }
+      }
+
+      renderSystemLogs();
+      if (!silent && btnRefreshLogs) {
+        const svg = btnRefreshLogs.querySelector('svg');
+        if (svg) {
+          svg.style.transition = 'transform 0.4s ease';
+          svg.style.transform = 'rotate(360deg)';
+          setTimeout(() => { svg.style.transform = ''; }, 400);
+        }
+      }
+    } catch (err) {
+      if (!silent) console.error('Errore caricamento log di sistema:', err);
+    }
+  }
+
+  function filterLogs(logs) {
+    return (logs || []).filter(entry => {
+      // 1. Level Filter
+      if (activeLogLevel !== 'all' && entry.level !== activeLogLevel) {
+        return false;
+      }
+      // 2. Source Filter
+      if (activeLogSource !== 'all' && entry.source.toLowerCase() !== activeLogSource.toLowerCase()) {
+        return false;
+      }
+      // 3. Search Query Filter
+      if (activeLogSearch && activeLogSearch.trim()) {
+        const q = activeLogSearch.toLowerCase().trim();
+        const m = (entry.message || '').toLowerCase();
+        const s = (entry.source || '').toLowerCase();
+        const d = entry.details ? JSON.stringify(entry.details).toLowerCase() : '';
+        if (!m.includes(q) && !s.includes(q) && !d.includes(q)) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }
+
+  function renderSystemLogs() {
+    if (!logsTerminalList) return;
+    const filtered = filterLogs(allSystemLogs);
+
+    if (logsVisibleCount) {
+      logsVisibleCount.textContent = `${filtered.length} log visualizzati`;
+    }
+
+    if (filtered.length === 0) {
+      logsTerminalList.innerHTML = `
+        <div class="logs-empty-state">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-dim); margin-bottom:0.5rem;">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+          <p>Nessun log corrisponde ai filtri selezionati.</p>
+        </div>
+      `;
+      return;
+    }
+
+    logsTerminalList.innerHTML = filtered.map(log => {
+      const timeStr = log.timestamp ? new Date(log.timestamp).toLocaleTimeString('it-IT') : '--:--:--';
+      const fullDate = log.timestamp ? new Date(log.timestamp).toLocaleString('it-IT') : '';
+      const hasDetails = log.details !== undefined && log.details !== null && (typeof log.details === 'object' ? Object.keys(log.details).length > 0 : true);
+
+      return `
+        <div class="log-entry-row level-${log.level}" id="log-entry-${log.id}">
+          <div class="log-col-time" title="${escapeHtml(fullDate)}">${escapeHtml(timeStr)}</div>
+          <div><span class="log-badge-level ${log.level}">${log.level}</span></div>
+          <div class="log-col-source" title="${escapeHtml(log.source)}">[${escapeHtml(log.source)}]</div>
+          <div class="log-col-msg">
+            ${escapeHtml(log.message)}
+            ${hasDetails ? `
+              <div style="margin-top:0.25rem;">
+                <button type="button" class="btn-link-action" style="font-size:0.68rem; padding:0; color:#38bdf8;" onclick="window.toggleLogDetails('${log.id}')">
+                  ▸ Mostra Dettagli & Stack
+                </button>
+              </div>
+              <pre class="log-details-block hidden" id="log-details-${log.id}">${escapeHtml(typeof log.details === 'object' ? JSON.stringify(log.details, null, 2) : String(log.details))}</pre>
+            ` : ''}
+          </div>
+          <div>
+            <button class="log-btn-copy-entry" onclick="window.copySingleLog('${log.id}')" title="Copia riga log">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  window.toggleLogDetails = (id) => {
+    const el = document.getElementById(`log-details-${id}`);
+    if (el) el.classList.toggle('hidden');
+  };
+
+  window.copySingleLog = (id) => {
+    const log = allSystemLogs.find(l => l.id === id);
+    if (!log) return;
+    const text = `[${log.timestamp}] [${log.level.toUpperCase()}] [${log.source}] ${log.message}${log.details ? '\nDetails: ' + JSON.stringify(log.details, null, 2) : ''}`;
+    navigator.clipboard.writeText(text).then(() => {
+      showToast('Riga copiata negli appunti', 'info');
+    });
+  };
+
+  function startLogsPolling() {
+    stopLogsPolling();
+    if (logsAutoRefreshToggle && !logsAutoRefreshToggle.checked) return;
+    logsPollingInterval = setInterval(() => {
+      const activeTab = document.querySelector('.nav-tab.active');
+      if (activeTab && activeTab.dataset.tab === 'tab-logs') {
+        loadSystemLogs(true);
+      } else {
+        stopLogsPolling();
+      }
+    }, 4000);
+  }
+
+  function stopLogsPolling() {
+    if (logsPollingInterval) {
+      clearInterval(logsPollingInterval);
+      logsPollingInterval = null;
+    }
+  }
+
+  if (logsAutoRefreshToggle) {
+    logsAutoRefreshToggle.addEventListener('change', () => {
+      if (logsAutoRefreshToggle.checked) {
+        startLogsPolling();
+      } else {
+        stopLogsPolling();
+      }
+    });
+  }
+
+  if (btnRefreshLogs) {
+    btnRefreshLogs.addEventListener('click', () => loadSystemLogs(false));
+  }
+
+  if (btnCopyLogs) {
+    btnCopyLogs.addEventListener('click', () => {
+      const filtered = filterLogs(allSystemLogs);
+      if (filtered.length === 0) {
+        showToast('Nessun log da copiare', 'info');
+        return;
+      }
+      const text = filtered.map(l =>
+        `[${l.timestamp}] [${l.level.toUpperCase()}] [${l.source}] ${l.message}${l.details ? ' | Details: ' + JSON.stringify(l.details) : ''}`
+      ).join('\n');
+
+      navigator.clipboard.writeText(text).then(() => {
+        showToast(`Copiati ${filtered.length} log negli appunti`, 'success');
+      }).catch(() => {
+        showToast('Impossibile copiare negli appunti', 'error');
+      });
+    });
+  }
+
+  if (btnClearLogs) {
+    btnClearLogs.addEventListener('click', async () => {
+      if (!confirm('Sei sicuro di voler svuotare lo storico dei log di sistema?')) return;
+      try {
+        const res = await apiFetch('/api/logs', { method: 'DELETE' });
+        const data = await res.json();
+        if (data.success) {
+          showToast('Log di sistema svuotati', 'info');
+          await loadSystemLogs(false);
+        } else {
+          showToast(`Errore: ${data.error}`, 'error');
+        }
+      } catch (err) {
+        showToast('Errore durante lo svuotamento dei log', 'error');
+      }
+    });
+  }
+
+  logsFilterChips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      logsFilterChips.forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      activeLogLevel = chip.dataset.level;
+      renderSystemLogs();
+    });
+  });
+
+  if (logsSourceFilter) {
+    logsSourceFilter.addEventListener('change', (e) => {
+      activeLogSource = e.target.value;
+      renderSystemLogs();
+    });
+  }
+
+  if (logsSearchInput) {
+    logsSearchInput.addEventListener('input', (e) => {
+      activeLogSearch = e.target.value;
+      renderSystemLogs();
+    });
+  }
+
   // --- Initial App Bootstrapping ---
   async function initApp() {
     const whCallbackUrl = document.getElementById('whCallbackUrl');
@@ -2424,6 +2692,7 @@ document.addEventListener('DOMContentLoaded', () => {
     await loadGlobalSettings();
     fetchSyncStatus();
     startSyncTimer();
+    loadSystemLogs(true);
 
     // Check if returning from Facebook OAuth with a selection session
     const urlParams = new URLSearchParams(window.location.search);

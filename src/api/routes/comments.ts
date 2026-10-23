@@ -110,14 +110,15 @@ router.get('/cron-check', async (req: Request, res: Response) => {
 // POST /api/comments/sync - Sincronizzazione per il profilo attivo (supporta range date storiche per Meta)
 router.post('/sync', async (req: Request, res: Response) => {
   try {
-    const profileId = (req.query.profileId as string) || req.body.profileId;
+    const profileId = (req.query.profileId as string) || (req.body?.profileId as string);
     if (!profileId) {
       return res.status(400).json({ success: false, error: 'profileId mancante' });
     }
 
-    const since = (req.query.since as string) || (req.body.since as string) || (req.query.dateFrom as string) || (req.body.dateFrom as string);
-    const until = (req.query.until as string) || (req.body.until as string) || (req.query.dateTo as string) || (req.body.dateTo as string);
-    const limit = parseInt((req.query.limit as string) || (req.body.limit as string), 10);
+    const since = (req.query.since as string) || (req.body?.since as string) || (req.query.dateFrom as string) || (req.body?.dateFrom as string);
+    const until = (req.query.until as string) || (req.body?.until as string) || (req.query.dateTo as string) || (req.body?.dateTo as string);
+    const limitRaw = (req.query.limit as string) || (req.body?.limit as string);
+    const limit = limitRaw && !isNaN(parseInt(limitRaw, 10)) ? parseInt(limitRaw, 10) : undefined;
 
     SchedulerService.notifyManualSync();
     const metaRes = await MetaSyncService.syncCommentsForProfile(profileId, { since, until, limit });
